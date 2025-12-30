@@ -2641,3 +2641,76 @@ window.updateMobileCartBadge = updateMobileCartBadge;
 window.isMobileDevice = isMobileDevice;
 
 console.log('✅ Mobile bottom navigation system loaded');
+
+
+
+
+/**
+ * Show Shop Conflict Modal
+ */
+function showShopConflictModal(currentShop, newShop) {
+    document.getElementById('currentShopName').textContent = currentShop;
+    document.getElementById('newShopName').textContent = newShop;
+    
+    const modal = new bootstrap.Modal(document.getElementById('shopConflictModal'));
+    modal.show();
+  }
+  
+  /**
+   * Close Shop Conflict Modal
+   */
+  function closeShopConflictModal() {
+    const modal = bootstrap.Modal.getInstance(document.getElementById('shopConflictModal'));
+    if (modal) modal.hide();
+    pendingCartItem = null;
+  }
+  /**
+ * Confirm Replace Cart
+ */
+function confirmReplaceCart() {
+    console.log('🔄 Replacing cart with new shop items');
+    
+    // ✅ Hide mini-cart before clearing (use correct function name)
+    hideMiniCartFooter();
+    
+    // Clear current cart
+    clearCart();
+    
+    // Add pending item
+    if (pendingCartItem) {
+      addToCart(pendingCartItem);
+      pendingCartItem = null;
+    }
+    
+    // Close modal
+    closeShopConflictModal();
+    
+    console.log('✅ Cart replaced successfully');
+  }
+  
+  // Make it global
+  window.confirmReplaceCart = confirmReplaceCart;
+  
+  
+  
+  /**
+   * Get Cart Item by Product ID
+   */
+  function getCartItem(productId) {
+    return cart.items.find(item => item.id === productId);
+  }
+  
+  /**
+   * Check if Product is in Cart
+   */
+  function isInCart(productId) {
+    return cart.items.some(item => item.id === productId);
+  }
+  
+  // Initialize cart on page load
+  document.addEventListener('DOMContentLoaded', function() {
+    initializeCart();
+    console.log('✅ Cart system initialized');
+  });
+  
+  
