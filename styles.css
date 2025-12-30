@@ -1266,3 +1266,62 @@ body.modal-open #miniCartFooter {
     padding-top: 10px !important;
   }
 }
+
+/* ============================================
+   FIX: Bottom Navigation Overlap Prevention
+   ============================================ */
+
+/* General page-view padding for mobile bottom nav */
+.page-view {
+  padding-bottom: 80px !important; /* Space for bottom nav */
+}
+
+/* Orders list specific padding (Customers) */
+#ordersListContainer {
+  padding-bottom: 100px !important; /* Extra space for bottom nav + mini-cart */
+}
+
+/* Shop orders list specific padding (Shopowners) */
+#shopOrdersList {
+  padding-bottom: 100px !important; /* Extra space for bottom nav */
+}
+
+/* When mini-cart is visible (Customers browsing shops) */
+body.mini-cart-visible .page-view {
+  padding-bottom: 160px !important; /* Space for both bottom nav + mini-cart */
+}
+
+body.mini-cart-visible #mainContainer {
+  padding-bottom: 160px !important;
+}
+
+/* My Orders Page specific */
+#myOrdersPage .container-fluid:last-child {
+  padding-bottom: 100px !important;
+}
+
+/* Orders Received Page specific (Shopowners) */
+#mobileOrdersReceivedPage {
+  padding-bottom: 100px !important;
+}
+
+/* Mobile Bottom Nav - ensure it's always on top */
+.mobile-bottom-nav {
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  z-index: 9998; /* Below mini-cart (9999) but above content */
+}
+
+/* Mini-cart footer positioning */
+#miniCartFooter {
+  position: fixed;
+  bottom: 60px; /* Above bottom nav (60px height) */
+  z-index: 9999;
+}
+
+/* Adjust mini-cart position when bottom nav is visible */
+body.has-bottom-nav #miniCartFooter {
+  bottom: 60px; /* Height of bottom nav */
+}
