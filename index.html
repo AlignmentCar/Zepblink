@@ -1826,7 +1826,9 @@ let allShopProducts = [];
   renderShopInfo(currentShopData);
   
   // Load shop products
-  loadShopProducts(currentShopData.ownerId);
+ // ✅ NEW
+loadShopProducts(currentShopData.id);
+
   
   // ✅ NEW: Show/Hide Add Products button based on ownership
   const addProductsBtn = document.getElementById('addProductsBtn');
@@ -1893,12 +1895,11 @@ function renderShopInfo(shop) {
     </div>
   `;
 }
-
 /**
- * Load Shop Products from Firestore
+ * Load Shop Products from Firestore (SHOP-SPECIFIC)
  */
-async function loadShopProducts(ownerId) {
-  console.log('🔄 Loading products for owner:', ownerId);
+ async function loadShopProducts(shopId) {
+  console.log('🔄 Loading products for shop:', shopId);
   
   const productsGrid = document.getElementById('shopProductsGrid');
   const emptyState = document.getElementById('shopProductsEmptyState');
@@ -1917,10 +1918,10 @@ async function loadShopProducts(ownerId) {
   `;
   
   try {
-    const { collection, getDocs, query, where } = window.firebaseImports;
+    const { collection, getDocs } = window.firebaseImports;
     
-    // Load products for this shop owner from their tenant collection
-    const productsRef = collection(window.db, 'tenants', ownerId, 'products');
+    // ✅ NEW: Load from shops/{shopId}/products instead of tenants/{ownerId}/products
+    const productsRef = collection(window.db, 'shops', shopId, 'products');
     const productsSnap = await getDocs(productsRef);
     
     allShopProducts = [];
@@ -1931,7 +1932,7 @@ async function loadShopProducts(ownerId) {
       });
     });
     
-    console.log(`✅ Loaded ${allShopProducts.length} products`);
+    console.log(`✅ Loaded ${allShopProducts.length} products for shop: ${shopId}`);
     
     // Render products
     renderShopProducts(allShopProducts);
@@ -1949,6 +1950,7 @@ async function loadShopProducts(ownerId) {
     `;
   }
 }
+
 
 /**
  * Render Shop Products
@@ -2305,31 +2307,29 @@ function removePendingProduct(index) {
   console.log('🗑️ Removed product:', removed[0]);
   updateProductsPreviewList();
 }
-
 /**
- * Save All Products to Firebase
+ * Save All Products to Firebase (SHOP-SPECIFIC)
  */
-async function saveAllProducts() {
+ async function saveAllProducts() {
   if (pendingProducts.length === 0) {
     alert('⚠️ Please add at least one product');
     return;
   }
   
-  if (!currentShopData || !currentShopData.ownerId) {
+  if (!currentShopData || !currentShopData.id) {
     alert('❌ Shop data not found');
     return;
   }
   
-  console.log('💾 Saving', pendingProducts.length, 'products to Firebase...');
+  console.log('💾 Saving', pendingProducts.length, 'products to shop:', currentShopData.shopName);
   
   try {
     showSyncIndicator('Saving products...', null);
     
     const { collection, addDoc } = window.firebaseImports;
-    const ownerId = currentShopData.ownerId;
     
-    // Products ref for this shop owner
-    const productsRef = collection(window.db, 'tenants', ownerId, 'products');
+    // ✅ NEW: Save to shops/{shopId}/products instead of tenants/{ownerId}/products
+    const productsRef = collection(window.db, 'shops', currentShopData.id, 'products');
     
     const productsToSave = [...pendingProducts];
     
@@ -2345,11 +2345,12 @@ async function saveAllProducts() {
           category: '',
           createdAt: new Date().toISOString(),
           updatedAt: new Date().toISOString(),
-          ownerId: ownerId,
           shopId: currentShopData.id,
-          shopName: currentShopData.shopName
+          shopName: currentShopData.shopName,
+          ownerId: currentShopData.ownerId,
+          ownerName: currentShopData.ownerName
         });
-        console.log('✅ Firebase: Product saved:', productName);
+        console.log('✅ Firebase: Product saved to shop:', productName);
         return { success: true, product: productName };
       } catch (error) {
         console.error('❌ Firebase: Failed to save product:', productName, error);
@@ -2376,14 +2377,14 @@ async function saveAllProducts() {
     pendingProducts = [];
     
     // Reload products
-    await loadShopProducts(ownerId);
+    await loadShopProducts(currentShopData.id);
     
     showSyncIndicator('Products saved!', 2000);
     
     if (failed.length > 0) {
       alert(`⚠️ Warning: ${failed.length} product(s) failed to save.\n\n${productsToSave.length - failed.length} products saved successfully.`);
     } else {
-      alert(`✅ Success!\n\n${productsToSave.length} product(s) added to your shop!`);
+      alert(`✅ Success!\n\n${productsToSave.length} product(s) added to ${currentShopData.shopName}!`);
     }
     
   } catch (error) {
