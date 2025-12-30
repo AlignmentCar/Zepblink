@@ -4840,9 +4840,8 @@ function updateShopOrderStats(orders) {
   
   console.log('✅ Stats updated');
 }
-
 /**
- * Render Shop Orders (UPDATED with Accept + Delivered buttons)
+ * Render Shop Orders (UPDATED with Accept/Reject + Delivered/Not Delivered buttons)
  */
  function renderShopOrders(orders) {
   console.log('🎨 Rendering', orders.length, 'shop orders');
@@ -4892,7 +4891,6 @@ function updateShopOrderStats(orders) {
     // ✅ Check order status for button display
     const isPending = order.status === 'pending';
     const canDeliver = ['accepted', 'preparing', 'ready'].includes(order.status);
-    const isDelivered = order.status === 'delivered';
     
     html += `
       <div class="card mb-2" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
@@ -4934,34 +4932,48 @@ function updateShopOrderStats(orders) {
             <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">
               ₹${(order.totalAmount || order.total || 0).toFixed(2)}
             </span>
-            <div class="d-flex gap-2">
+            <div class="d-flex gap-1 flex-wrap" style="justify-content: flex-end;">
               ${isPending ? `
-                <!-- ✅ ACCEPT BUTTON (Only for pending orders) -->
+                <!-- ✅ ACCEPT BUTTON -->
                 <button 
                   class="btn btn-sm btn-success" 
                   onclick="acceptOrder('${order.id}', '${order.shopId || ''}')" 
-                  style="border-radius: 6px; font-size: 0.8rem; padding: 4px 12px; white-space: nowrap;"
+                  style="border-radius: 6px; font-size: 0.75rem; padding: 3px 10px; white-space: nowrap;"
                   id="acceptBtn_${order.id}">
                   <i class="bi bi-check-circle"></i> Accept
                 </button>
+                <!-- ❌ NOT ACCEPTED BUTTON -->
+                <button 
+                  class="btn btn-sm btn-danger" 
+                  onclick="rejectOrder('${order.id}', '${order.shopId || ''}')" 
+                  style="border-radius: 6px; font-size: 0.75rem; padding: 3px 10px; white-space: nowrap;"
+                  id="rejectBtn_${order.id}">
+                  <i class="bi bi-x-circle"></i> Reject
+                </button>
               ` : ''}
               ${canDeliver ? `
-                <!-- ✅ DELIVERED BUTTON (For accepted/preparing/ready orders) -->
+                <!-- ✅ DELIVERED BUTTON -->
                 <button 
-                  class="btn btn-sm btn-primary" 
+                  class="btn btn-sm btn-success" 
                   onclick="deliverOrder('${order.id}', '${order.shopId || ''}')" 
-                  style="border-radius: 6px; font-size: 0.8rem; padding: 4px 12px; white-space: nowrap; background: #28a745; border-color: #28a745;"
-                  id="deliverBtn_${order.id}"
-                  onmouseover="this.style.background='#218838'"
-                  onmouseout="this.style.background='#28a745'">
+                  style="border-radius: 6px; font-size: 0.75rem; padding: 3px 10px; white-space: nowrap;"
+                  id="deliverBtn_${order.id}">
                   <i class="bi bi-check-circle-fill"></i> Delivered
+                </button>
+                <!-- ❌ NOT DELIVERED BUTTON -->
+                <button 
+                  class="btn btn-sm btn-danger" 
+                  onclick="markNotDelivered('${order.id}', '${order.shopId || ''}')" 
+                  style="border-radius: 6px; font-size: 0.75rem; padding: 3px 10px; white-space: nowrap;"
+                  id="notDeliverBtn_${order.id}">
+                  <i class="bi bi-x-circle-fill"></i> Not Delivered
                 </button>
               ` : ''}
               <!-- VIEW BUTTON -->
               <button 
                 class="btn btn-sm btn-primary" 
                 onclick="viewShopOrderDetails('${order.id}')" 
-                style="border-radius: 6px; font-size: 0.8rem; padding: 4px 12px;">
+                style="border-radius: 6px; font-size: 0.75rem; padding: 3px 10px;">
                 <i class="bi bi-eye"></i> View
               </button>
             </div>
@@ -4975,7 +4987,6 @@ function updateShopOrderStats(orders) {
   container.innerHTML = html;
   console.log('✅ Rendered', orders.length, 'orders with action buttons');
 }
-
 
 
 /**
@@ -4998,9 +5009,8 @@ function filterShopOrders(status) {
     console.log('✅ Showing', filtered.length, 'orders with status:', status);
   }
 }
-
 /**
- * View Shop Order Details (UPDATED with Accept + Delivered buttons in modal)
+ * View Shop Order Details (UPDATED with Accept/Reject + Delivered/Not Delivered buttons)
  */
  function viewShopOrderDetails(orderId) {
   console.log('👀 Viewing detailed order:', orderId);
@@ -5061,7 +5071,7 @@ function filterShopOrders(status) {
     itemsHtml = '<p class="text-muted">No items</p>';
   }
   
-  // Build modal content (same as before)
+  // Build modal content
   const modalBody = document.getElementById('shopOrderDetailsBody');
   if (!modalBody) {
     console.error('Modal body not found');
@@ -5204,14 +5214,22 @@ function filterShopOrders(status) {
     </div>
   `;
   
-  // ✅ UPDATE MODAL FOOTER based on order status
+  // ✅ UPDATE MODAL FOOTER based on order status (UPDATED with Reject + Not Delivered)
   const modalFooter = document.querySelector('#shopOrderDetailsModal .modal-footer');
   if (modalFooter) {
     if (order.status === 'pending') {
-      // Show Accept button for pending orders
+      // Show Accept + Reject buttons for pending orders
       modalFooter.innerHTML = `
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
           <i class="bi bi-x-circle"></i> Close
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-danger" 
+          onclick="rejectOrderFromModal('${order.id}', '${order.shopId || ''}')" 
+          style="border-radius: 8px;"
+          id="modalRejectBtn">
+          <i class="bi bi-x-circle"></i> Reject Order
         </button>
         <button 
           type="button" 
@@ -5223,22 +5241,30 @@ function filterShopOrders(status) {
         </button>
       `;
     } else if (['accepted', 'preparing', 'ready'].includes(order.status)) {
-      // Show Delivered button for accepted/preparing/ready orders
+      // Show Delivered + Not Delivered buttons for accepted/preparing/ready orders
       modalFooter.innerHTML = `
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
           <i class="bi bi-x-circle"></i> Close
         </button>
         <button 
           type="button" 
+          class="btn btn-danger" 
+          onclick="markNotDeliveredFromModal('${order.id}', '${order.shopId || ''}')" 
+          style="border-radius: 8px;"
+          id="modalNotDeliverBtn">
+          <i class="bi bi-x-circle-fill"></i> Not Delivered
+        </button>
+        <button 
+          type="button" 
           class="btn btn-success" 
           onclick="deliverOrderFromModal('${order.id}', '${order.shopId || ''}')" 
-          style="border-radius: 8px; background: #28a745; border-color: #28a745;"
+          style="border-radius: 8px;"
           id="modalDeliverBtn">
           <i class="bi bi-check-circle-fill"></i> Mark as Delivered
         </button>
       `;
     } else {
-      // Show status badge for delivered/cancelled orders
+      // Show status badge for completed/rejected orders
       modalFooter.innerHTML = `
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
           <i class="bi bi-x-circle"></i> Close
@@ -5259,6 +5285,11 @@ function filterShopOrders(status) {
   
   console.log('✅ Order details modal displayed');
 }
+
+// Make it global
+window.viewShopOrderDetails = viewShopOrderDetails;
+
+console.log('✅ Order details modal with Accept/Reject + Delivered/Not Delivered buttons loaded');
 
 /**
  * Deliver Order from Modal (with modal close on success)
@@ -5826,6 +5857,246 @@ console.log('✅ Accept order function loaded');
 window.deliverOrder = deliverOrder;
 
 console.log('✅ Deliver order function loaded');
+
+
+
+
+/**
+ * Get Order Status Color (UPDATED with rejected statuses)
+ */
+ function getOrderStatusColor(status) {
+  const colors = {
+    'pending': '#ffc107',
+    'accepted': '#17a2b8',
+    'preparing': '#fd7e14',
+    'ready': '#20c997',
+    'delivered': '#28a745',
+    'cancelled': '#dc3545',
+    'rejected': '#dc3545',        // ✅ NEW
+    'not_accepted': '#dc3545',    // ✅ NEW
+    'not_delivered': '#dc3545'    // ✅ NEW
+  };
+  return colors[status] || '#6c757d';
+}
+
+/**
+ * Get Order Status Text (UPDATED with rejected statuses)
+ */
+function getOrderStatusText(status) {
+  const texts = {
+    'pending': 'Pending',
+    'accepted': 'Accepted',
+    'preparing': 'Preparing',
+    'ready': 'Ready',
+    'delivered': 'Delivered',
+    'cancelled': 'Cancelled',
+    'rejected': 'Rejected',              // ✅ NEW
+    'not_accepted': 'Not Accepted',      // ✅ NEW
+    'not_delivered': 'Not Delivered'     // ✅ NEW
+  };
+  return texts[status] || status;
+}
+
+
+
+/**
+ * Reject Order (Mark as Not Accepted)
+ */
+ async function rejectOrder(orderId, shopId) {
+  console.log('❌ Rejecting order:', orderId, 'from shop:', shopId);
+  
+  // ✅ Confirm action
+  if (!confirm('Reject this order?\n\nThis will mark the order as "Not Accepted" and notify the customer.')) {
+    return;
+  }
+  
+  // ✅ Find order
+  const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+  
+  if (!order) {
+    alert('❌ Order not found!');
+    return;
+  }
+  
+  // ✅ Check if already rejected
+  if (order.status !== 'pending') {
+    alert(`⚠️ This order is already ${order.status}!`);
+    return;
+  }
+  
+  // ✅ Show loading on button
+  const rejectBtn = document.getElementById(`rejectBtn_${orderId}`);
+  if (rejectBtn) {
+    rejectBtn.disabled = true;
+    rejectBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Rejecting...';
+  }
+  
+  try {
+    const { doc, updateDoc, serverTimestamp } = window.firebaseImports;
+    
+    console.log('📝 Updating order in Firebase...');
+    console.log('  - Order ID:', orderId);
+    console.log('  - Shop ID:', shopId);
+    console.log('  - Status: not_accepted');
+    
+    // ✅ Update order status in Firebase
+    const orderRef = doc(window.db, 'shops', shopId, 'orders', orderId);
+    
+    await updateDoc(orderRef, {
+      status: 'not_accepted',
+      rejectedAt: serverTimestamp(),
+      rejectedBy: window.currentUser.uid,
+      rejectedByName: window.currentUser.displayName || window.currentUser.email || 'Shopowner',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order rejected successfully!');
+    
+    // ✅ Show success message
+    if (rejectBtn) {
+      rejectBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i> Rejected!';
+      rejectBtn.style.background = '#6c757d';
+      rejectBtn.style.borderColor = '#6c757d';
+      
+      setTimeout(() => {
+        rejectBtn.style.display = 'none';
+      }, 1500);
+    }
+    
+    // ✅ Update local order object
+    order.status = 'not_accepted';
+    order.rejectedAt = new Date().toISOString();
+    order.rejectedBy = window.currentUser.uid;
+    order.rejectedByName = window.currentUser.displayName || window.currentUser.email || 'Shopowner';
+    
+    // ✅ Refresh stats
+    updateShopOrderStats(window.allShopOrders);
+    updateMobileOrdersBadge();
+    
+    // ✅ Re-render orders after 1.5 seconds
+    setTimeout(() => {
+      renderShopOrders(window.allShopOrders);
+    }, 1500);
+    
+    // ✅ Show success alert
+    alert('❌ Order Rejected!\n\nOrder has been marked as not accepted. Customer will be notified.');
+    
+  } catch (error) {
+    console.error('❌ Error rejecting order:', error);
+    
+    // ✅ Show error message
+    alert(`❌ Error rejecting order:\n\n${error.message}`);
+    
+    // ✅ Reset button
+    if (rejectBtn) {
+      rejectBtn.disabled = false;
+      rejectBtn.innerHTML = '<i class="bi bi-x-circle"></i> Reject';
+    }
+  }
+}
+
+/**
+ * Mark Order as Not Delivered
+ */
+async function markNotDelivered(orderId, shopId) {
+  console.log('❌ Marking order as not delivered:', orderId, 'from shop:', shopId);
+  
+  // ✅ Confirm action
+  if (!confirm('Mark this order as Not Delivered?\n\nThis will update the order status and notify the customer.')) {
+    return;
+  }
+  
+  // ✅ Find order
+  const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+  
+  if (!order) {
+    alert('❌ Order not found!');
+    return;
+  }
+  
+  // ✅ Check current status
+  if (!['accepted', 'preparing', 'ready'].includes(order.status)) {
+    alert(`⚠️ Cannot mark this order as not delivered!\n\nCurrent status: ${order.status}`);
+    return;
+  }
+  
+  // ✅ Show loading on button
+  const notDeliverBtn = document.getElementById(`notDeliverBtn_${orderId}`);
+  if (notDeliverBtn) {
+    notDeliverBtn.disabled = true;
+    notDeliverBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+  }
+  
+  try {
+    const { doc, updateDoc, serverTimestamp } = window.firebaseImports;
+    
+    console.log('📝 Updating order in Firebase...');
+    console.log('  - Order ID:', orderId);
+    console.log('  - Shop ID:', shopId);
+    console.log('  - Status: not_delivered');
+    
+    // ✅ Update order status in Firebase
+    const orderRef = doc(window.db, 'shops', shopId, 'orders', orderId);
+    
+    await updateDoc(orderRef, {
+      status: 'not_delivered',
+      notDeliveredAt: serverTimestamp(),
+      notDeliveredBy: window.currentUser.uid,
+      notDeliveredByName: window.currentUser.displayName || window.currentUser.email || 'Shopowner',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order marked as not delivered successfully!');
+    
+    // ✅ Show success message
+    if (notDeliverBtn) {
+      notDeliverBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i> Not Delivered!';
+      notDeliverBtn.style.background = '#6c757d';
+      notDeliverBtn.style.borderColor = '#6c757d';
+      
+      setTimeout(() => {
+        notDeliverBtn.style.display = 'none';
+      }, 1500);
+    }
+    
+    // ✅ Update local order object
+    order.status = 'not_delivered';
+    order.notDeliveredAt = new Date().toISOString();
+    order.notDeliveredBy = window.currentUser.uid;
+    order.notDeliveredByName = window.currentUser.displayName || window.currentUser.email || 'Shopowner';
+    
+    // ✅ Refresh stats
+    updateShopOrderStats(window.allShopOrders);
+    updateMobileOrdersBadge();
+    
+    // ✅ Re-render orders after 1.5 seconds
+    setTimeout(() => {
+      renderShopOrders(window.allShopOrders);
+    }, 1500);
+    
+    // ✅ Show success alert
+    alert('❌ Order Not Delivered!\n\nOrder has been marked as not delivered. Customer will be notified.');
+    
+  } catch (error) {
+    console.error('❌ Error marking order as not delivered:', error);
+    
+    // ✅ Show error message
+    alert(`❌ Error marking order as not delivered:\n\n${error.message}`);
+    
+    // ✅ Reset button
+    if (notDeliverBtn) {
+      notDeliverBtn.disabled = false;
+      notDeliverBtn.innerHTML = '<i class="bi bi-x-circle-fill"></i> Not Delivered';
+    }
+  }
+}
+
+// Make functions global
+window.rejectOrder = rejectOrder;
+window.markNotDelivered = markNotDelivered;
+
+console.log('✅ Reject order functions loaded');
+
 
 
 </script>
