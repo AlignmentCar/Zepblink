@@ -1,0 +1,25 @@
+{
+  "name": "Tile & Sanitaryware Inventory",
+  "short_name": "Inventory",
+  "description": "Inventory management system for tiles and sanitaryware products",
+  "start_url": "/PurchaseOrderFixing/",
+  "scope": "/PurchaseOrderFixing/",
+  "display": "standalone",
+  "background_color": "#0d6efd",
+  "theme_color": "#0d6efd",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

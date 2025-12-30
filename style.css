@@ -1,0 +1,99 @@
+/* Custom Styles for Tile Inventory App */
+
+body {
+    background-color: #f8f9fa;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* Product Cards */
+.product-card {
+    transition: transform 0.2s, box-shadow 0.2s;
+    height: 100%;
+    border: 1px solid #dee2e6;
+}
+
+.product-card:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.product-image {
+    width: 100%;
+    height: 200px;
+    object-fit: cover;
+    background-color: #e9ecef;
+}
+
+.stock-badge {
+    font-size: 1rem;
+    padding: 0.5rem 1rem;
+}
+
+.stock-good {
+    background-color: #28a745;
+    color: white;
+}
+
+.stock-low {
+    background-color: #ffc107;
+    color: black;
+}
+
+.stock-out {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* Action Buttons on Cards */
+.card-actions {
+    display: flex;
+    gap: 0.5rem;
+}
+
+.btn-action {
+    flex: 1;
+}
+
+/* Large Touch-Friendly Buttons */
+.btn-lg {
+    padding: 1rem 2rem;
+    font-size: 1.2rem;
+}
+
+/* Modal Improvements */
+.modal-header {
+    border-bottom: none;
+}
+
+.modal-footer {
+    border-top: none;
+}
+
+/* Table Styling */
+.table {
+    background-color: white;
+}
+
+/* Empty State */
+.empty-state {
+    text-align: center;
+    padding: 3rem;
+    color: #6c757d;
+}
+
+.empty-state i {
+    font-size: 4rem;
+    margin-bottom: 1rem;
+}
+
+/* Responsive Adjustments */
+@media (max-width: 768px) {
+    .btn-lg {
+        padding: 0.75rem 1.5rem;
+        font-size: 1rem;
+    }
+    
+    .product-image {
+        height: 150px;
+    }
+}
