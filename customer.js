@@ -2153,8 +2153,7 @@ function updateMiniCart() {
  * ==========================================
  */
 
-// Global variables
-let currentMobileTab = 'home';
+
 
 /**
  * Initialize Mobile Bottom Navigation
