@@ -40,12 +40,12 @@
 
       // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG
       const firebaseConfig = {
-        apiKey: "YOUR_API_KEY",
-        authDomain: "YOUR_PROJECT.firebaseapp.com",
-        projectId: "YOUR_PROJECT_ID",
-        storageBucket: "YOUR_PROJECT.firebasestorage.app",
-        messagingSenderId: "YOUR_MESSAGING_SENDER_ID",
-        appId: "YOUR_APP_ID"
+        apiKey: "AIzaSyBLt_z6QrkwXwK2l8tDq-n7choUJ6vUJf0",
+  authDomain: "zepblink-3e1c7.firebaseapp.com",
+  projectId: "zepblink-3e1c7",
+  storageBucket: "zepblink-3e1c7.firebasestorage.app",
+  messagingSenderId: "275105674132",
+  appId: "1:275105674132:web:1e0460f6765a580c461581"
       };
 
       const app = initializeApp(firebaseConfig);
@@ -657,250 +657,113 @@ function skipLogin() {
     alert('⚠️ Guest Mode: You are browsing without authentication.\n\nSign in with Google or Email to place orders.');
   }, 500);
 }
+
 /**
- * ==========================================
- * GOOGLE SIGN-IN (FIXED)
- * ==========================================
+ * Handle Google Sign-In (FOR CUSTOMERS)
  */
- async function handleGoogleSignIn() {
+async function handleGoogleSignIn() {
   const googleSignInBtn = document.getElementById('googleSignInBtn');
-  
+
   if (googleSignInBtn) {
     googleSignInBtn.disabled = true;
     googleSignInBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
   }
-  
+
   try {
     console.log('🔐 Starting Google Sign-In...');
-    
-    // Get Firebase imports
+
     const { signInWithPopup, GoogleAuthProvider } = window.firebaseImports;
-    
-    // Create Google provider
     const provider = new GoogleAuthProvider();
-    
-    // Force account selection
+
     provider.setCustomParameters({
       prompt: 'select_account'
     });
-    
-    // Sign in with popup
+
     const result = await signInWithPopup(window.auth, provider);
     const user = result.user;
-    
+
     console.log('✅ Google Sign-In successful!', user.email);
-    
-    // Create user document in Firestore if doesn't exist
-    const { doc, getDoc, setDoc } = window.firebaseImports;
-    const userDocRef = doc(window.db, 'users', user.uid);
-    const userDoc = await getDoc(userDocRef);
-    
-    if (!userDoc.exists()) {
-      await setDoc(userDocRef, {
-        email: user.email,
-        displayName: user.displayName || user.email.split('@')[0],
-        photoURL: user.photoURL,
-        role: 'customer',
-        createdAt: new Date().toISOString(),
-        lastLogin: new Date().toISOString()
-      });
-      console.log('✅ User document created');
-    } else {
-      // Update last login
-      await setDoc(userDocRef, {
-        lastLogin: new Date().toISOString()
-      }, { merge: true });
-    }
-    
-    // Auth state listener will show the app
-    
+
   } catch (error) {
     console.error('❌ Google Sign-In error:', error);
-    console.error('Error code:', error.code);
-    console.error('Error message:', error.message);
-    
+
     let errorMessage = 'Google Sign-In failed. Please try again.';
-    
-    if (error.code === 'auth/unauthorized-domain') {
-      errorMessage = '⚠️ Domain not authorized!\n\nPlease add this domain to Firebase Console:\nAuthentication → Settings → Authorized domains\n\nAdd: ' + window.location.hostname;
-    } else if (error.code === 'auth/popup-closed-by-user') {
+
+    if (error.code === 'auth/popup-closed-by-user') {
       errorMessage = 'Sign-in cancelled. Please try again.';
     } else if (error.code === 'auth/popup-blocked') {
-      errorMessage = 'Pop-up blocked. Please allow pop-ups for this site.';
+      errorMessage = 'Pop-up blocked. Please enable pop-ups for this site.';
     } else if (error.code === 'auth/cancelled-popup-request') {
-      errorMessage = 'Only one sign-in at a time.';
+      errorMessage = 'Only one sign-in at a time please.';
     } else if (error.code === 'auth/network-request-failed') {
       errorMessage = 'Network error. Check your internet connection.';
     }
-    
+
     alert(errorMessage);
-    
-    // Re-enable button
+
     if (googleSignInBtn) {
       googleSignInBtn.disabled = false;
-      googleSignInBtn.innerHTML = `
-        <svg width="18" height="18" viewBox="0 0 18 18" style="margin-right: 10px; vertical-align: middle;">
-          <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
-          <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
-          <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
-          <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
-        </svg>
-        <span style="vertical-align: middle;">Continue with Google</span>
-      `;
+      googleSignInBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 18 18" class="google-icon"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg><span class="btn-text">Continue with Google</span>';
     }
   }
 }
 
 /**
- * ==========================================
- * EMAIL/PASSWORD SIGN IN (FIXED)
- * ==========================================
+ * Handle Email/Password Sign-In (FOR AUTHORIZED SHOPOWNERS ONLY)
  */
- async function handleEmailPasswordAuth(event) {
+async function handleEmailPasswordAuth(event) {
   event.preventDefault();
-  
+
   const emailInput = document.getElementById('userEmailInput');
   const passwordInput = document.getElementById('userPasswordInput');
   const loginButton = document.getElementById('loginButton');
-  
-  const email = emailInput?.value?.trim();
-  const password = passwordInput?.value;
-  
-  if (!email || !password) {
-    alert('Please enter both email and password');
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!window.isAuthorizedShopowner(email)) {
+    alert('❌ Unauthorized! This email is not registered as a shopowner.\n\nCustomers should use Google Sign-In.');
     return;
   }
-  
+
   if (loginButton) {
     loginButton.disabled = true;
     loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
   }
-  
+
   try {
-    console.log('🔐 Attempting email sign-in:', email);
-    
+    console.log('🔐 Starting Email/Password Sign-In for:', email);
+
     const { signInWithEmailAndPassword } = window.firebaseImports;
     const userCredential = await signInWithEmailAndPassword(window.auth, email, password);
-    
-    console.log('✅ Email sign-in successful!', userCredential.user.email);
-    
-    // Update last login in Firestore
-    const { doc, setDoc } = window.firebaseImports;
-    const userDocRef = doc(window.db, 'users', userCredential.user.uid);
-    await setDoc(userDocRef, {
-      lastLogin: new Date().toISOString()
-    }, { merge: true });
-    
-    // Auth state listener will show the app
-    
+    const user = userCredential.user;
+
+    console.log('✅ Email/Password Sign-In successful!', user.email);
+
   } catch (error) {
-    console.error('❌ Email sign-in error:', error);
-    console.error('Error code:', error.code);
-    
-    let errorMessage = 'Login failed. Please try again.';
-    
-    if (error.code === 'auth/invalid-credential') {
-      errorMessage = 'Invalid email or password. Please check and try again.';
+    console.error('❌ Email/Password Sign-In error:', error);
+
+    let errorMessage = 'Sign-in failed. Please try again.';
+
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'No account found with this email. Please contact admin.';
     } else if (error.code === 'auth/wrong-password') {
       errorMessage = 'Incorrect password. Please try again.';
-    } else if (error.code === 'auth/user-not-found') {
-      errorMessage = 'No account found with this email.\n\nPlease sign up first or use Google Sign-In.';
     } else if (error.code === 'auth/invalid-email') {
-      errorMessage = 'Invalid email address.';
+      errorMessage = 'Invalid email format.';
+    } else if (error.code === 'auth/user-disabled') {
+      errorMessage = 'This account has been disabled. Contact admin.';
     } else if (error.code === 'auth/too-many-requests') {
       errorMessage = 'Too many failed attempts. Please try again later.';
-    } else if (error.code === 'auth/user-disabled') {
-      errorMessage = 'This account has been disabled.';
-    } else if (error.code === 'auth/network-request-failed') {
-      errorMessage = 'Network error. Check your internet connection.';
+    } else if (error.code === 'auth/invalid-credential') {
+      errorMessage = 'Invalid email or password. Please try again.';
     }
-    
+
     alert(errorMessage);
-    
+
     if (loginButton) {
       loginButton.disabled = false;
       loginButton.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In with Email';
-    }
-  }
-}
-
-
-
-/**
- * ==========================================
- * CREATE ACCOUNT (SIGN UP)
- * ==========================================
- */
- async function handleSignUp(event) {
-  event.preventDefault();
-  
-  const emailInput = document.getElementById('signUpEmailInput');
-  const passwordInput = document.getElementById('signUpPasswordInput');
-  const signUpBtn = document.getElementById('signUpBtn');
-  
-  const email = emailInput?.value?.trim();
-  const password = passwordInput?.value;
-  
-  if (!email || !password) {
-    alert('Please enter both email and password');
-    return;
-  }
-  
-  if (password.length < 6) {
-    alert('Password must be at least 6 characters long');
-    return;
-  }
-  
-  if (signUpBtn) {
-    signUpBtn.disabled = true;
-    signUpBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Creating account...';
-  }
-  
-  try {
-    console.log('📝 Creating account for:', email);
-    
-    const { createUserWithEmailAndPassword, doc, setDoc } = window.firebaseImports;
-    const userCredential = await createUserWithEmailAndPassword(window.auth, email, password);
-    const user = userCredential.user;
-    
-    console.log('✅ Account created!', user.email);
-    
-    // Create user document in Firestore
-    const userDocRef = doc(window.db, 'users', user.uid);
-    await setDoc(userDocRef, {
-      email: user.email,
-      displayName: user.email.split('@')[0],
-      photoURL: null,
-      role: 'customer',
-      createdAt: new Date().toISOString(),
-      lastLogin: new Date().toISOString()
-    });
-    
-    alert('✅ Account created successfully! Welcome!');
-    
-    // Auth state listener will show the app
-    
-  } catch (error) {
-    console.error('❌ Sign up error:', error);
-    console.error('Error code:', error.code);
-    
-    let errorMessage = 'Failed to create account.';
-    
-    if (error.code === 'auth/email-already-in-use') {
-      errorMessage = 'An account with this email already exists.\n\nPlease sign in instead or use Google Sign-In.';
-    } else if (error.code === 'auth/invalid-email') {
-      errorMessage = 'Invalid email address.';
-    } else if (error.code === 'auth/weak-password') {
-      errorMessage = 'Password is too weak. Use at least 6 characters.';
-    } else if (error.code === 'auth/network-request-failed') {
-      errorMessage = 'Network error. Check your internet connection.';
-    }
-    
-    alert(errorMessage);
-    
-    if (signUpBtn) {
-      signUpBtn.disabled = false;
-      signUpBtn.innerHTML = '<i class="bi bi-person-plus me-2"></i>Create Account';
     }
   }
 }
