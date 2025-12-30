@@ -191,7 +191,7 @@ onAuthStateChanged(auth, async (user) => {
       window.isAuthorizedShopowner = isAuthorizedShopowner;
 
    /**
- * Show Main App (UPDATED with featured products and cart initialization)
+ * Show Main App (UPDATED with featured products, cart, and mobile nav)
  */
 function showApp() {
   console.log('📱 Showing main app...');
@@ -220,7 +220,7 @@ function showApp() {
     initializeCart();
   }
   
-  // ✅ Load shops after showing app
+  // ✅ Load shops and featured products after showing app
   setTimeout(() => {
     if (typeof loadShopsFromFirestore === 'function') {
       loadShopsFromFirestore();
@@ -228,9 +228,14 @@ function showApp() {
       loadShops();
     }
     
-    // ✅ NEW: Load featured products
+    // Load featured products
     if (typeof loadFeaturedProducts === 'function') {
       loadFeaturedProducts();
+    }
+    
+    // ✅ NEW: Initialize mobile bottom nav
+    if (typeof initializeMobileBottomNav === 'function') {
+      initializeMobileBottomNav();
     }
   }, 500);
   
@@ -1206,6 +1211,50 @@ style="border-radius: 10px; font-weight: 700; padding: 15px; font-size: 1.1rem;"
       
     </div>
 
+
+
+
+
+    <!-- ============================================
+     MOBILE SETTINGS PAGE (PLACEHOLDER)
+     ============================================ -->
+<div class="page-view" id="mobileSettingsPage" style="display: none;">
+  
+  <!-- Header -->
+  <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 20px; text-align: center;">
+    <h3 style="margin: 0; font-weight: 700;">
+      <i class="bi bi-gear-fill me-2"></i>Settings
+    </h3>
+  </div>
+  
+  <!-- Content -->
+  <div class="container-fluid" style="padding: 20px; text-align: center; padding-top: 60px;">
+    <i class="bi bi-gear" style="font-size: 80px; color: #ccc;"></i>
+    <h4 style="margin-top: 20px; color: #333;">Settings Coming Soon</h4>
+    <p class="text-muted">We're working on an amazing settings page for you!</p>
+    
+    <div style="margin-top: 40px; text-align: left; max-width: 400px; margin-left: auto; margin-right: auto;">
+      <h6 style="font-weight: 700; margin-bottom: 15px;">Upcoming Features:</h6>
+      <ul style="list-style: none; padding: 0;">
+        <li style="padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+          <i class="bi bi-person-circle me-2" style="color: #25D366;"></i>Profile Management
+        </li>
+        <li style="padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+          <i class="bi bi-geo-alt me-2" style="color: #25D366;"></i>Delivery Addresses
+        </li>
+        <li style="padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+          <i class="bi bi-bell me-2" style="color: #25D366;"></i>Notifications
+        </li>
+        <li style="padding: 10px; background: #f8f9fa; border-radius: 8px; margin-bottom: 10px;">
+          <i class="bi bi-shield-check me-2" style="color: #25D366;"></i>Privacy & Security
+        </li>
+      </ul>
+    </div>
+  </div>
+  
+</div>
+
+
     <!-- ============================================
      MINI-CART FOOTER (PERSISTENT)
      ============================================ -->
@@ -1864,6 +1913,44 @@ transition: transform 0.3s ease;
     </div>
   </div>
 </div>
+
+
+<!-- ============================================
+     MOBILE BOTTOM NAVIGATION (CUSTOMERS ONLY)
+     ============================================ -->
+     <div id="mobileBottomNav" class="mobile-bottom-nav" style="display: none;">
+  
+      <!-- Home Tab -->
+      <div class="nav-tab active" onclick="switchMobileTab('home')" data-tab="home">
+        <i class="bi bi-house-door-fill"></i>
+        <span>Home</span>
+      </div>
+      
+      <!-- Orders Tab -->
+      <div class="nav-tab" onclick="switchMobileTab('orders')" data-tab="orders">
+        <i class="bi bi-bag-fill"></i>
+        <span>Orders</span>
+      </div>
+      
+      <!-- Cart Tab -->
+      <div class="nav-tab" onclick="switchMobileTab('cart')" data-tab="cart">
+        <div style="position: relative;">
+          <i class="bi bi-cart-fill"></i>
+          <!-- Cart Badge -->
+          <span id="mobileCartBadge" class="mobile-cart-badge" style="display: none;">0</span>
+        </div>
+        <span>Cart</span>
+      </div>
+      
+      <!-- Settings Tab -->
+      <div class="nav-tab" onclick="switchMobileTab('settings')" data-tab="settings">
+        <i class="bi bi-gear-fill"></i>
+        <span>Settings</span>
+      </div>
+      
+    </div>
+    
+
 
 
 
