@@ -2596,15 +2596,12 @@ function escapeHtml(text) {
 // Global variables
 let currentShopData = null;
 let allShopProducts = [];
+
 /**
- * Navigate to Shop Products Page (FIXED - Better debugging)
+ * Navigate to Shop Products Page (UPDATED - Show button for all shopowners)
  */
  function navigateToShopProducts(shopId, shopName) {
-  console.log('🏪 ========================================');
-  console.log('🏪 Navigating to Shop Products');
-  console.log('🏪 Shop ID:', shopId);
-  console.log('🏪 Shop Name:', shopName);
-  console.log('🏪 ========================================');
+  console.log('🏪 Navigating to Shop Products:', shopId, shopName);
   
   // Store current shop data
   currentShopData = cachedShops.find(shop => shop.id === shopId);
@@ -2615,28 +2612,14 @@ let allShopProducts = [];
     return;
   }
   
-  console.log('✅ Shop Data:', currentShopData);
-  console.log('  - Shop ID:', currentShopData.id);
-  console.log('  - Shop Name:', currentShopData.shopName);
-  console.log('  - Owner ID:', currentShopData.ownerId);
-  console.log('  - Owner Name:', currentShopData.ownerName);
-  
   // Hide main app and navbar
   const mainApp = document.getElementById('mainApp');
   const mainNavbar = document.getElementById('mainNavbar');
   const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
   
-  if (mainApp) {
-    mainApp.style.display = 'none';
-  }
-  
-  if (mainNavbar) {
-    mainNavbar.style.display = 'none';
-  }
-  
-  if (sidebarToggleBtn) {
-    sidebarToggleBtn.style.display = 'none';
-  }
+  if (mainApp) mainApp.style.display = 'none';
+  if (mainNavbar) mainNavbar.style.display = 'none';
+  if (sidebarToggleBtn) sidebarToggleBtn.style.display = 'none';
   
   // Show shop products page
   const shopProductsPage = document.getElementById('shopProductsPage');
@@ -2657,70 +2640,57 @@ let allShopProducts = [];
   // Load shop products
   loadShopProducts(currentShopData.id);
   
-  // ✅ FIXED: Show/Hide Add Products button based on ownership
-  console.log('🔍 ========================================');
+  // ✅ UPDATED: Show/Hide Add Products button (SAME LOGIC AS REGISTER SHOP)
   console.log('🔍 Checking Add Products Button Visibility');
-  console.log('🔍 ========================================');
-  console.log('  - Current User:', window.currentUser);
-  console.log('  - User UID:', window.currentUser?.uid);
-  console.log('  - User Role:', window.currentUser?.role);
-  console.log('  - Shop Owner ID:', currentShopData.ownerId);
+  console.log('  - Current User Role:', window.currentUser?.role);
   
   const addProductsBtn = document.getElementById('addProductsBtn');
   const headerSpacer = document.getElementById('headerSpacer');
   
-  console.log('  - Add Products Button Element:', addProductsBtn);
-  console.log('  - Header Spacer Element:', headerSpacer);
-  
-  // Check ownership
-  const isShopowner = window.currentUser && window.currentUser.role === 'shopowner';
-  const ownsThisShop = window.currentUser && window.currentUser.uid === currentShopData.ownerId;
-  
-  console.log('  - Is Shopowner?', isShopowner);
-  console.log('  - Owns This Shop?', ownsThisShop);
-  
-  if (isShopowner && ownsThisShop) {
-    // User owns this shop - show Add Products button
-    console.log('✅ SHOWING Add Products Button (User owns this shop)');
+  // ✅ NEW LOGIC: Show for ANY shopowner (not just shop owner)
+  if (window.currentUser && window.currentUser.role === 'shopowner') {
+    // User is a shopowner - show Add Products button
+    console.log('✅ SHOWING Add Products Button (User is shopowner)');
     if (addProductsBtn) {
+      addProductsBtn.classList.remove('d-none');
       addProductsBtn.style.display = 'block';
-      console.log('  - Button display set to: block');
-    } else {
-      console.error('❌ addProductsBtn element not found!');
     }
-    
     if (headerSpacer) {
       headerSpacer.style.display = 'none';
-      console.log('  - Spacer hidden');
     }
   } else {
-    // Hide button for customers or other shopowners
-    console.log('ℹ️ HIDING Add Products Button');
-    if (!isShopowner) {
-      console.log('  - Reason: User is not a shopowner (role: ' + window.currentUser?.role + ')');
-    } else {
-      console.log('  - Reason: User does not own this shop');
-      console.log('    - User UID:', window.currentUser?.uid);
-      console.log('    - Shop Owner UID:', currentShopData.ownerId);
-    }
-    
+    // Hide button for customers
+    console.log('🚫 HIDING Add Products Button (User is not shopowner)');
     if (addProductsBtn) {
+      addProductsBtn.classList.add('d-none');
       addProductsBtn.style.display = 'none';
     }
-    
     if (headerSpacer) {
       headerSpacer.style.display = 'block';
     }
   }
-  
-  console.log('🔍 ========================================');
   
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
   
   // Update hash
   window.location.hash = '#shop-products/' + shopId;
+  
+  // ✅ INSURANCE: Re-check button after short delay (in case currentUser loads late)
+  setTimeout(() => {
+    if (window.currentUser && window.currentUser.role === 'shopowner') {
+      const btn = document.getElementById('addProductsBtn');
+      if (btn) {
+        btn.classList.remove('d-none');
+        btn.style.display = 'block';
+        console.log('✅ Button re-checked after delay: visible');
+      }
+      const spacer = document.getElementById('headerSpacer');
+      if (spacer) spacer.style.display = 'none';
+    }
+  }, 500);
 }
+
 
 /**
  * Render Shop Info Card
@@ -2809,8 +2779,9 @@ function renderShopInfo(shop) {
     `;
   }
 }
+
 /**
- * Render Shop Products (WITH CART + EDIT INTEGRATION)
+ * Render Shop Products (UPDATED - Edit button for all shopowners)
  */
  function renderShopProducts(products) {
   const productsGrid = document.getElementById('shopProductsGrid');
@@ -2830,11 +2801,12 @@ function renderShopInfo(shop) {
   productsGrid.style.display = 'flex';
   if (emptyState) emptyState.style.display = 'none';
   
-  // ✅ Check if current user is shop owner
-  const isOwner = window.currentUser && 
-                  window.currentUser.role === 'shopowner' && 
-                  currentShopData && 
-                  window.currentUser.uid === currentShopData.ownerId;
+  // ✅ UPDATED: Check if user is ANY shopowner (not just shop owner)
+  const isShopowner = window.currentUser && window.currentUser.role === 'shopowner';
+  
+  console.log('📦 Rendering products:');
+  console.log('  - User is shopowner?', isShopowner);
+  console.log('  - Will show edit buttons?', isShopowner);
   
   // Render each product
   products.forEach(product => {
@@ -2863,8 +2835,8 @@ function renderShopInfo(shop) {
       <div class="col-md-4 col-sm-6 col-12">
         <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s; position: relative;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
           
-          ${isOwner ? `
-            <!-- ✅ EDIT BUTTON (SHOPOWNERS ONLY) -->
+          ${isShopowner ? `
+            <!-- ✅ EDIT BUTTON (ALL SHOPOWNERS) -->
             <button 
               onclick="openEditProductModal('${product.id}')" 
               style="
@@ -2918,8 +2890,8 @@ function renderShopInfo(shop) {
               </span>
             </div>
             
-            ${!isOwner ? `
-              <!-- ✅ CART BUTTON / QUANTITY STEPPER (CUSTOMERS ONLY) -->
+            ${!isShopowner ? `
+              <!-- ✅ CART BUTTON (CUSTOMERS ONLY) -->
               <div id="cartBtn_${product.id}">
                 ${inCart ? `
                   <!-- Quantity Stepper -->
@@ -2968,7 +2940,7 @@ function renderShopInfo(shop) {
     productsGrid.insertAdjacentHTML('beforeend', productCard);
   });
   
-  console.log(`✅ Rendered ${products.length} products (Owner: ${isOwner})`);
+  console.log(`✅ Rendered ${products.length} products (Shopowner mode: ${isShopowner})`);
 }
 
 
@@ -3051,13 +3023,6 @@ function formatPrice(price) {
   });
 }
 
-/**
- * Add to Cart (Placeholder)
- */
-function addToCart(productId) {
-  console.log('🛒 Add to cart:', productId);
-  alert('🛒 Add to Cart feature coming soon!\n\nProduct ID: ' + productId);
-}
 
 /**
  * ==========================================
@@ -3067,16 +3032,13 @@ function addToCart(productId) {
 
 // Global variables
 let pendingProducts = [];
-
 /**
- * Open Add Products Modal (UPDATED with better debugging)
+ * Open Add Products Modal (UPDATED - No ownership check)
  */
  function openAddProductsModal() {
-  console.log('➕ ========================================');
   console.log('➕ Opening Add Products Modal');
-  console.log('➕ ========================================');
   
-  // Check if user is shopowner and owns this shop
+  // ✅ SIMPLIFIED: Only check if user is shopowner
   if (!window.currentUser) {
     console.error('❌ No user signed in');
     alert('⚠️ Please sign in to add products.');
@@ -3084,26 +3046,22 @@ let pendingProducts = [];
   }
   
   if (window.currentUser.role !== 'shopowner') {
-    console.error('❌ User is not a shopowner (role: ' + window.currentUser.role + ')');
+    console.error('❌ User is not a shopowner');
     alert('⚠️ Only shopowners can add products.');
     return;
   }
   
+  // ✅ REMOVED: Ownership check - any shopowner can add products to any shop
+  
   if (!currentShopData) {
     console.error('❌ No shop data available');
-    alert('❌ Shop data not found');
-    return;
-  }
-  
-  if (currentShopData.ownerId !== window.currentUser.uid) {
-    console.error('❌ User does not own this shop');
-    console.log('  - User UID:', window.currentUser.uid);
-    console.log('  - Shop Owner UID:', currentShopData.ownerId);
-    alert('⚠️ You can only add products to your own shop.');
+    alert('❌ Shop data not found. Please go back and try again.');
     return;
   }
   
   console.log('✅ All checks passed, opening modal...');
+  console.log('  - Shop:', currentShopData.shopName);
+  console.log('  - User:', window.currentUser.email);
   
   // Reset pending products
   pendingProducts = [];
@@ -3141,6 +3099,7 @@ let pendingProducts = [];
 
 // Make it global
 window.openAddProductsModal = openAddProductsModal;
+
 
 /**
  * Handle Product Input Keydown (Enter or Comma)
@@ -3380,620 +3339,8 @@ function removePendingProduct(index) {
     alert('❌ Error saving products: ' + error.message);
   }
 }
-/**
- * ==========================================
- * CART MANAGEMENT SYSTEM (UPDATED with Featured Products)
- * ==========================================
- */
 
 
-// Global cart state
-let cart = {
-  items: [],
-  shopId: null,
-  shopName: null,
-  shopOwnerId: null
-};
-
-
-// Pending item for shop conflict resolution
-let pendingCartItem = null;
-
-
-/**
- * Initialize Cart from Storage
- */
-function initializeCart() {
-  try {
-    const savedCart = localStorage.getItem('ue2shop_cart');
-    if (savedCart) {
-      cart = JSON.parse(savedCart);
-      console.log('✅ Cart loaded from storage:', cart);
-      updateMiniCart();
-    }
-  } catch (error) {
-    console.error('❌ Error loading cart:', error);
-    cart = { items: [], shopId: null, shopName: null, shopOwnerId: null };
-  }
-}
-
-
-/**
- * Save Cart to Storage
- */
-function saveCart() {
-  try {
-    localStorage.setItem('ue2shop_cart', JSON.stringify(cart));
-    console.log('💾 Cart saved to storage');
-  } catch (error) {
-    console.error('❌ Error saving cart:', error);
-  }
-}
-
-
-/**
- * Add Product to Cart (UPDATED with featured products refresh)
- */
-function addToCart(product) {
-  console.log('🛒 Add to cart:', product);
-  
-  // Check if customer
-  if (!window.currentUser || window.currentUser.role !== 'customer') {
-    alert('⚠️ Only customers can add items to cart. Please sign in as a customer.');
-    return;
-  }
-  
-  // Check stock
-  if (product.stock <= 0) {
-    alert('❌ This product is out of stock!');
-    return;
-  }
-  
-  // Check shop conflict
-  if (cart.shopId && cart.shopId !== product.shopId) {
-    // Different shop - show conflict modal
-    pendingCartItem = product;
-    showShopConflictModal(cart.shopName, product.shopName);
-    return;
-  }
-  
-  // Set shop info if first item
-  if (!cart.shopId) {
-    cart.shopId = product.shopId;
-    cart.shopName = product.shopName;
-    cart.shopOwnerId = product.ownerId;
-  }
-  
-  // Check if product already in cart
-  const existingItem = cart.items.find(item => item.id === product.id);
-  
-  if (existingItem) {
-    // Increase quantity
-    if (existingItem.quantity < product.stock) {
-      existingItem.quantity++;
-      console.log('✅ Increased quantity:', existingItem.quantity);
-    } else {
-      alert('⚠️ Cannot add more. Stock limit reached!');
-      return;
-    }
-  } else {
-    // Add new item
-    cart.items.push({
-      id: product.id,
-      name: product.name,
-      price: product.price || 0,
-      stock: product.stock,
-      quantity: 1,
-      brand: product.brand || '',
-      size: product.size || '',
-      shopId: product.shopId,
-      shopName: product.shopName,
-      ownerId: product.ownerId
-    });
-    console.log('✅ Added new item to cart');
-  }
-  
-  // Save and update UI
-  saveCart();
-  updateMiniCart();
-  updateCartPage();
-  
-  // Re-render products to show stepper
-  if (typeof allShopProducts !== 'undefined' && allShopProducts) {
-    renderShopProducts(allShopProducts);
-  }
-  
-  // ✅ NEW: Update featured products display
-  if (typeof refreshFeaturedProductsDisplay === 'function') {
-    refreshFeaturedProductsDisplay();
-  }
-  
-  // Show success animation
-  showMiniCartBriefly();
-}
-
-
-/**
- * Update Item Quantity in Cart (UPDATED with featured products refresh)
- */
-function updateCartQuantity(productId, change) {
-  const item = cart.items.find(i => i.id === productId);
-  
-  if (!item) {
-    console.warn('⚠️ Item not found in cart:', productId);
-    return;
-  }
-  
-  const newQuantity = item.quantity + change;
-  
-  // Remove item if quantity becomes 0 or negative
-  if (newQuantity <= 0) {
-    console.log('🗑️ Quantity reached 0, removing item');
-    removeFromCart(productId);
-    return;
-  }
-  
-  // Check stock limit
-  if (newQuantity > item.stock) {
-    alert('⚠️ Cannot add more. Stock limit reached!');
-    return;
-  }
-  
-  // Update quantity
-  item.quantity = newQuantity;
-  console.log(`✅ Updated quantity: ${item.name} = ${item.quantity}`);
-  
-  saveCart();
-  updateMiniCart();
-  updateCartPage();
-  
-  // Update product page
-  if (typeof allShopProducts !== 'undefined' && allShopProducts) {
-    renderShopProducts(allShopProducts);
-  }
-  
-  // ✅ NEW: Update featured products display
-  if (typeof refreshFeaturedProductsDisplay === 'function') {
-    refreshFeaturedProductsDisplay();
-  }
-}
-
-
-/**
- * Remove Item from Cart (UPDATED with featured products refresh)
- */
-function removeFromCart(productId) {
-  const itemIndex = cart.items.findIndex(i => i.id === productId);
-  
-  if (itemIndex === -1) return;
-  
-  const item = cart.items[itemIndex];
-  console.log('🗑️ Removing from cart:', item.name);
-  
-  cart.items.splice(itemIndex, 1);
-  
-  // Clear shop info if cart is empty
-  if (cart.items.length === 0) {
-    cart.shopId = null;
-    cart.shopName = null;
-    cart.shopOwnerId = null;
-    console.log('🧹 Cart cleared - no more items');
-  }
-  
-  saveCart();
-  updateMiniCart();
-  updateCartPage();
-  
-  // Update product page if available
-  if (typeof allShopProducts !== 'undefined' && allShopProducts) {
-    renderShopProducts(allShopProducts);
-  }
-  
-  // ✅ NEW: Update featured products display
-  if (typeof refreshFeaturedProductsDisplay === 'function') {
-    refreshFeaturedProductsDisplay();
-  }
-}
-
-
-/**
- * Clear Entire Cart (UPDATED with featured products refresh)
- */
-function clearCart() {
-  console.log('🗑️ Clearing entire cart');
-  
-  cart = { 
-    items: [], 
-    shopId: null, 
-    shopName: null, 
-    shopOwnerId: null 
-  };
-  
-  saveCart();
-  updateMiniCart(); // This will hide mini-cart and remove padding
-  updateCartPage();
-  
-  // Update product page if available
-  if (typeof renderShopProducts === 'function' && typeof allShopProducts !== 'undefined' && allShopProducts) {
-    renderShopProducts(allShopProducts);
-  }
-  
-  // ✅ NEW: Update featured products display
-  if (typeof refreshFeaturedProductsDisplay === 'function') {
-    refreshFeaturedProductsDisplay();
-  }
-  
-  console.log('✅ Cart cleared successfully');
-}
-
-
-/**
- * Update Mini-Cart Footer (UPDATED with padding management)
- */
-function updateMiniCart() {
-  const miniCartFooter = document.getElementById('miniCartFooter');
-  const miniCartCount = document.getElementById('miniCartCount');
-  const miniCartPreview = document.getElementById('miniCartPreview');
-  const miniCartTotal = document.getElementById('miniCartTotal');
-  
-  if (!miniCartFooter) return;
-  
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // ✅ Hide mini-cart when empty
-  if (totalItems === 0 || cart.items.length === 0) {
-    // Use the global hide function with padding management
-    if (typeof hideMiniCartFooter === 'function') {
-      hideMiniCartFooter();
-    } else {
-      miniCartFooter.style.display = 'none';
-    }
-    console.log('🚫 Mini-cart hidden (0 items)');
-    return;
-  }
-  
-  // ✅ Show mini-cart with padding management
-  if (typeof showMiniCartFooter === 'function') {
-    showMiniCartFooter();
-  } else {
-    miniCartFooter.style.display = 'block';
-  }
-  
-  // Update count
-  if (miniCartCount) {
-    miniCartCount.textContent = totalItems;
-  }
-  
-  // Update preview (first 2 items)
-  if (miniCartPreview) {
-    const preview = cart.items.slice(0, 2).map(item => item.name).join(', ');
-    const remaining = cart.items.length > 2 ? ` +${cart.items.length - 2} more` : '';
-    miniCartPreview.textContent = preview + remaining;
-  }
-  
-  // Update total
-  if (miniCartTotal) {
-    miniCartTotal.textContent = `₹${totalAmount.toFixed(2)}`;
-  }
-  
-  console.log('✅ Mini-cart updated:', totalItems, 'items, ₹', totalAmount);
-}
-
-
-/**
- * Show Mini-Cart Briefly (After Add) - with animation
- */
-function showMiniCartBriefly() {
-  const miniCartFooter = document.getElementById('miniCartFooter');
-  if (!miniCartFooter) return;
-  
-  // Add pulse animation
-  miniCartFooter.style.animation = 'pulse 0.3s ease';
-  
-  setTimeout(() => {
-    miniCartFooter.style.animation = '';
-  }, 300);
-}
-
-
-/**
- * Navigate to Cart Page (UPDATED with padding management)
- */
-function navigateToCart() {
-  console.log('🛒 Navigating to Cart Page');
-  
-  if (!window.currentUser) {
-    alert('⚠️ Please sign in to view your cart.');
-    return;
-  }
-  
-  if (cart.items.length === 0) {
-    alert('⚠️ Your cart is empty!\n\nAdd products from shops to get started.');
-    return;
-  }
-  
-  // Hide all pages
-  const mainApp = document.getElementById('mainApp');
-  const shopProductsPage = document.getElementById('shopProductsPage');
-  const cartPage = document.getElementById('cartPage');
-  const myOrdersPage = document.getElementById('myOrdersPage');
-  
-  if (mainApp) {
-    mainApp.style.display = 'none';
-    mainApp.classList.remove('active');
-  }
-  
-  if (shopProductsPage) {
-    shopProductsPage.style.display = 'none';
-    shopProductsPage.classList.remove('active');
-  }
-  
-  if (myOrdersPage) {
-    myOrdersPage.style.display = 'none';
-    myOrdersPage.classList.remove('active');
-  }
-  
-  // Show cart page
-  if (cartPage) {
-    cartPage.style.display = 'block';
-    cartPage.classList.add('active');
-  }
-  
-  // Hide navbar
-  const mainNavbar = document.getElementById('mainAppNavbar');
-  if (mainNavbar) {
-    mainNavbar.style.display = 'none';
-  }
-  
-  const stickyNavbar = document.querySelector('.navbar.sticky-top');
-  if (stickyNavbar) {
-    stickyNavbar.style.display = 'none';
-  }
-  
-  // ✅ Hide mini-cart footer on cart page (no need to show it here)
-  if (typeof hideMiniCartFooter === 'function') {
-    hideMiniCartFooter();
-  }
-  
-  // Update cart page
-  if (typeof updateCartPage === 'function') {
-    updateCartPage();
-  }
-  
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  window.location.hash = '#cart';
-}
-
-
-// Make it global
-window.navigateToCart = navigateToCart;
-
-
-/**
- * Update Cart Page (UPDATED with padding management)
- */
-function updateCartPage() {
-  const cartItemsList = document.getElementById('cartItemsList');
-  const emptyCartState = document.getElementById('emptyCartState');
-  const cartSummary = document.getElementById('cartSummary');
-  const cartShopInfo = document.getElementById('cartShopInfo');
-  
-  if (!cartItemsList) return;
-  
-  // ✅ Check if cart is empty
-  if (!cart.items || cart.items.length === 0) {
-    // Show empty state
-    cartItemsList.innerHTML = '';
-    if (emptyCartState) emptyCartState.style.display = 'block';
-    if (cartSummary) cartSummary.style.display = 'none';
-    if (cartShopInfo) cartShopInfo.style.display = 'none';
-    
-    // ✅ Hide mini-cart with padding management
-    if (typeof hideMiniCartFooter === 'function') {
-      hideMiniCartFooter();
-    }
-    
-    console.log('📋 Cart page: Empty state shown');
-    return;
-  }
-  
-  // Hide empty state
-  if (emptyCartState) emptyCartState.style.display = 'none';
-  if (cartSummary) cartSummary.style.display = 'block';
-  if (cartShopInfo) cartShopInfo.style.display = 'block';
-  
-  // Render shop info
-  if (cartShopInfo && cart.shopName) {
-    cartShopInfo.innerHTML = `
-      <div class="card-body">
-        <h5 style="font-weight: 700; margin-bottom: 10px;">
-          <i class="bi bi-shop"></i> ${escapeHtml(cart.shopName)}
-        </h5>
-        <p class="text-muted mb-0" style="font-size: 0.9rem;">
-          <i class="bi bi-info-circle"></i> All items are from this shop
-        </p>
-      </div>
-    `;
-  }
-  
-  // Render cart items
-  let html = '';
-  cart.items.forEach(item => {
-    html += `
-      <div class="cart-item-card">
-        <div style="display: flex; align-items: start; gap: 15px;">
-          
-          <!-- Product Image Placeholder -->
-          <div style="
-            width: 80px;
-            height: 80px;
-            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
-            border-radius: 8px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            flex-shrink: 0;
-          ">
-            <i class="bi bi-box-seam" style="font-size: 2rem; color: #1976d2;"></i>
-          </div>
-          
-          <!-- Product Details -->
-          <div style="flex: 1;">
-            <h6 style="font-weight: 600; margin-bottom: 5px;">${escapeHtml(item.name)}</h6>
-            ${item.brand ? `<p class="text-muted mb-1" style="font-size: 0.85rem;">Brand: ${escapeHtml(item.brand)}</p>` : ''}
-            ${item.size ? `<p class="text-muted mb-1" style="font-size: 0.85rem;">Size: ${escapeHtml(item.size)}</p>` : ''}
-            <p style="font-weight: 700; font-size: 1.1rem; color: #25D366; margin-bottom: 10px;">₹${item.price.toFixed(2)}</p>
-            
-            <!-- Quantity Stepper -->
-            <div class="quantity-stepper">
-              <button onclick="updateCartQuantity('${item.id}', -1)" ${item.quantity <= 1 ? 'disabled' : ''}>
-                <i class="bi bi-dash"></i>
-              </button>
-              <span>${item.quantity}</span>
-              <button onclick="updateCartQuantity('${item.id}', 1)" ${item.quantity >= item.stock ? 'disabled' : ''}>
-                <i class="bi bi-plus"></i>
-              </button>
-            </div>
-            
-            ${item.quantity >= item.stock ? '<p class="text-warning mt-2 mb-0" style="font-size: 0.85rem;"><i class="bi bi-exclamation-triangle"></i> Stock limit reached</p>' : ''}
-          </div>
-          
-          <!-- Remove Button -->
-          <button 
-            class="btn btn-sm btn-outline-danger" 
-            onclick="removeFromCart('${item.id}')"
-            title="Remove">
-            <i class="bi bi-trash"></i>
-          </button>
-          
-        </div>
-      </div>
-    `;
-  });
-  
-  cartItemsList.innerHTML = html;
-  
-  // Update summary
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  const summaryItemCount = document.getElementById('summaryItemCount');
-  const summarySubtotal = document.getElementById('summarySubtotal');
-  const summaryTotal = document.getElementById('summaryTotal');
-  
-  if (summaryItemCount) summaryItemCount.textContent = totalItems;
-  if (summarySubtotal) summarySubtotal.textContent = `₹${subtotal.toFixed(2)}`;
-  if (summaryTotal) summaryTotal.textContent = `₹${subtotal.toFixed(2)}`;
-  
-  console.log('✅ Cart page updated:', totalItems, 'items');
-}
-
-
-/**
- * Go Back from Cart (UPDATED with padding management)
- */
-function goBackFromCart() {
-  const cartPage = document.getElementById('cartPage');
-  if (cartPage) {
-    cartPage.style.display = 'none';
-    cartPage.classList.remove('active');
-  }
-  
-  // ✅ Show mini-cart again if cart has items
-  if (cart.items.length > 0) {
-    updateMiniCart(); // This will show mini-cart with padding
-  }
-  
-  // Check if coming from shop products page
-  if (window.location.hash.includes('shop-products')) {
-    const shopProductsPage = document.getElementById('shopProductsPage');
-    if (shopProductsPage) {
-      shopProductsPage.style.display = 'block';
-      shopProductsPage.classList.add('active');
-    }
-  } else {
-    goBackHome();
-  }
-}
-
-
-// Make functions global
-window.initializeCart = initializeCart;
-window.saveCart = saveCart;
-window.addToCart = addToCart;
-window.updateCartQuantity = updateCartQuantity;
-window.removeFromCart = removeFromCart;
-window.clearCart = clearCart;
-window.updateMiniCart = updateMiniCart;
-window.showMiniCartBriefly = showMiniCartBriefly;
-window.updateCartPage = updateCartPage;
-window.goBackFromCart = goBackFromCart;
-
-console.log('✅ Cart management system loaded (with featured products support)');
-
-/**
- * Go Back to Home (UPDATED)
- */
-function goBackHome() {
-  const mainApp = document.getElementById('mainApp');
-  if (mainApp) {
-    mainApp.style.display = 'block';
-    mainApp.classList.add('active');
-  }
-  
-  const mainNavbar = document.getElementById('mainAppNavbar');
-  if (mainNavbar) {
-    mainNavbar.style.display = 'flex';
-  }
-  
-  const stickyNavbar = document.querySelector('.navbar.sticky-top');
-  if (stickyNavbar) {
-    stickyNavbar.style.display = 'flex';
-  }
-  
-  // ✅ Show mini-cart if cart has items
-  if (cart.items.length > 0) {
-    updateMiniCart();
-  }
-  
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  window.location.hash = '#home';
-}
-
-/**
- * Get Cart Item by ID (Utility)
- */
-function getCartItem(productId) {
-  return cart.items.find(item => item.id === productId);
-}
-
-/**
- * Format Price (Utility)
- */
-function formatPrice(price) {
-  return price.toLocaleString('en-IN', {
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2
-  });
-}
-
-// Make cart functions global
-window.cart = cart;
-window.initializeCart = initializeCart;
-window.saveCart = saveCart;
-window.addToCart = addToCart;
-window.updateCartQuantity = updateCartQuantity;
-window.removeFromCart = removeFromCart;
-window.clearCart = clearCart;
-window.updateMiniCart = updateMiniCart;
-window.updateCartPage = updateCartPage;
-window.goBackFromCart = goBackFromCart;
-window.goBackHome = goBackHome;
-window.getCartItem = getCartItem;
-window.formatPrice = formatPrice;
-
-console.log('✅ Cart management system loaded');
 
 /**
  * Show Shop Conflict Modal
@@ -4058,10 +3405,9 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 
-
 /**
  * ==========================================
- * EDIT PRODUCT FUNCTIONALITY (SHOPOWNERS ONLY)
+ * EDIT PRODUCT FUNCTIONALITY (ALL SHOPOWNERS)
  * ==========================================
  */
 
@@ -4069,19 +3415,26 @@ document.addEventListener('DOMContentLoaded', function() {
 let currentEditingProduct = null;
 
 /**
- * Open Edit Product Modal
+ * Open Edit Product Modal (UPDATED - All shopowners can edit)
  */
 function openEditProductModal(productId) {
   console.log('✏️ Opening edit modal for product:', productId);
   
-  // Check if user is shop owner
-  if (!window.currentUser || window.currentUser.role !== 'shopowner') {
+  // ✅ SIMPLIFIED: Only check if user is shopowner (not shop ownership)
+  if (!window.currentUser) {
+    alert('⚠️ Please sign in to edit products.');
+    return;
+  }
+  
+  if (window.currentUser.role !== 'shopowner') {
     alert('⚠️ Only shopowners can edit products.');
     return;
   }
   
-  if (!currentShopData || currentShopData.ownerId !== window.currentUser.uid) {
-    alert('⚠️ You can only edit products in your own shop.');
+  // ✅ REMOVED: Shop ownership check - any shopowner can edit any product
+  
+  if (!currentShopData) {
+    alert('❌ Shop data not found. Please go back and try again.');
     return;
   }
   
@@ -4092,6 +3445,10 @@ function openEditProductModal(productId) {
     alert('❌ Product not found!');
     return;
   }
+  
+  console.log('✅ Opening edit modal for:', product.name);
+  console.log('  - Shop:', currentShopData.shopName);
+  console.log('  - User:', window.currentUser.email);
   
   // Store current editing product
   currentEditingProduct = { ...product };
@@ -4112,7 +3469,7 @@ function openEditProductModal(productId) {
   // Focus on name field
   setTimeout(() => {
     document.getElementById('editProductName').focus();
-  }, 200);
+  }, 300);
 }
 
 /**
@@ -4133,7 +3490,7 @@ function adjustEditStock(change) {
 }
 
 /**
- * Save Edited Product
+ * Save Edited Product (UPDATED - All shopowners can save)
  */
 async function saveEditedProduct() {
   console.log('💾 Saving edited product...');
@@ -4166,6 +3523,11 @@ async function saveEditedProduct() {
     return;
   }
   
+  if (!currentShopData || !currentShopData.id) {
+    alert('❌ Shop data not found');
+    return;
+  }
+  
   try {
     showSyncIndicator('Saving changes...', null);
     
@@ -4182,11 +3544,15 @@ async function saveEditedProduct() {
       updatedAt: new Date().toISOString()
     };
     
+    console.log('📝 Updating product in shop:', currentShopData.shopName);
+    console.log('  - Product ID:', productId);
+    console.log('  - Update data:', updateData);
+    
     // Update in Firebase
     const productRef = doc(window.db, 'shops', currentShopData.id, 'products', productId);
     await updateDoc(productRef, updateData);
     
-    console.log('✅ Product updated in Firebase:', updateData);
+    console.log('✅ Product updated in Firebase');
     
     // Update local cache
     const productIndex = allShopProducts.findIndex(p => p.id === productId);
@@ -4217,6 +3583,14 @@ async function saveEditedProduct() {
     alert('❌ Error saving product: ' + error.message);
   }
 }
+
+// Make functions global
+window.openEditProductModal = openEditProductModal;
+window.adjustEditStock = adjustEditStock;
+window.saveEditedProduct = saveEditedProduct;
+
+console.log('✅ Edit product functionality loaded (All shopowners)');
+
 
 /**
  * Test Login as Customer (FIXED with null checks)
@@ -4411,919 +3785,6 @@ function skipLogin() {
   }, 1000);
 }
 
-
-/**
- * Proceed to Checkout (UPDATED with saved address integration)
- */
- async function proceedToCheckout() {
-  console.log('🛒 Proceeding to checkout');
-  
-  // Validate cart
-  if (!cart.items || cart.items.length === 0) {
-    alert('⚠️ Your cart is empty!');
-    return;
-  }
-  
-  // Validate user
-  if (!window.currentUser) {
-    alert('⚠️ Please sign in to continue!');
-    return;
-  }
-  
-  // ✅ Hide mini-cart footer during checkout
-  if (typeof hideMiniCartFooter === 'function') {
-    hideMiniCartFooter();
-  } else {
-    const miniCartFooter = document.getElementById('miniCartFooter');
-    if (miniCartFooter) {
-      miniCartFooter.style.display = 'none';
-    }
-  }
-  
-  // ✅ Load saved delivery address
-  await loadSavedDeliveryAddress();
-  
-  // ✅ Show/hide address sections based on saved address
-  const savedAddressDiv = document.getElementById('checkoutSavedAddress');
-  const noAddressDiv = document.getElementById('checkoutNoAddress');
-  
-  if (savedDeliveryAddress) {
-    // Show saved address
-    if (savedAddressDiv) {
-      savedAddressDiv.style.display = 'block';
-      document.getElementById('savedAddressName').textContent = savedDeliveryAddress.name;
-      document.getElementById('savedAddressDetails').textContent = savedDeliveryAddress.fullAddress;
-      document.getElementById('savedAddressPhone').textContent = savedDeliveryAddress.phone;
-    }
-    if (noAddressDiv) {
-      noAddressDiv.style.display = 'none';
-    }
-    console.log('✅ Showing saved delivery address');
-  } else {
-    // Show no address state
-    if (savedAddressDiv) {
-      savedAddressDiv.style.display = 'none';
-    }
-    if (noAddressDiv) {
-      noAddressDiv.style.display = 'block';
-    }
-    console.log('⚠️ No saved delivery address found');
-  }
-  
-  // Populate checkout summary
-  populateCheckoutSummary();
-  
-  // Show modal
-  const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-  checkoutModal.show();
-  
-  console.log('✅ Checkout modal opened');
-}
-
-// Make it global
-window.proceedToCheckout = proceedToCheckout;
-
-
-
-/**
- * Checkout Modal Event Listeners (NEW)
- */
- document.addEventListener('DOMContentLoaded', function() {
-  const checkoutModal = document.getElementById('checkoutModal');
-  
-  if (checkoutModal) {
-    // ✅ Hide mini-cart when modal opens
-    checkoutModal.addEventListener('show.bs.modal', function () {
-      console.log('📦 Checkout modal opening - hiding mini-cart');
-      
-      if (typeof hideMiniCartFooter === 'function') {
-        hideMiniCartFooter();
-      } else {
-        const miniCartFooter = document.getElementById('miniCartFooter');
-        if (miniCartFooter) {
-          miniCartFooter.style.display = 'none';
-        }
-      }
-    });
-    
-    // ✅ Show mini-cart when modal closes (if cart has items)
-    checkoutModal.addEventListener('hidden.bs.modal', function () {
-      console.log('📦 Checkout modal closed - checking cart');
-      
-      // Only show mini-cart if we're still on cart page and cart has items
-      const cartPage = document.getElementById('cartPage');
-      const isOnCartPage = cartPage && cartPage.style.display !== 'none';
-      
-      if (!isOnCartPage && cart.items.length > 0) {
-        // Not on cart page - show mini-cart
-        if (typeof showMiniCartFooter === 'function') {
-          showMiniCartFooter();
-        } else {
-          updateMiniCart();
-        }
-      }
-    });
-    
-    console.log('✅ Checkout modal event listeners attached');
-  }
-});
-
-/**
- * Populate Checkout Summary
- */
-function populateCheckoutSummary() {
-  const itemsList = document.getElementById('checkoutItemsList');
-  const itemCount = document.getElementById('checkoutItemCount');
-  const subtotal = document.getElementById('checkoutSubtotal');
-  const total = document.getElementById('checkoutTotal');
-  
-  if (!itemsList || !cart.items) return;
-  
-  // Render items
-  let html = '';
-  cart.items.forEach(item => {
-    const itemTotal = item.price * item.quantity;
-    html += `
-      <div class="checkout-item">
-        <div class="checkout-item-details">
-          <div class="checkout-item-name">${escapeHtml(item.name)}</div>
-          <div class="checkout-item-meta">
-            Qty: ${item.quantity} × ₹${item.price.toFixed(2)}
-            ${item.brand ? `<br><small>Brand: ${escapeHtml(item.brand)}</small>` : ''}
-          </div>
-        </div>
-        <div class="checkout-item-price">₹${itemTotal.toFixed(2)}</div>
-      </div>
-    `;
-  });
-  
-  itemsList.innerHTML = html;
-  
-  // Calculate totals
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  itemCount.textContent = totalItems;
-  subtotal.textContent = subtotalAmount.toFixed(2);
-  total.textContent = subtotalAmount.toFixed(2);
-  
-  console.log('✅ Checkout summary populated:', totalItems, 'items, ₹', subtotalAmount);
-}
-
-/**
- * Validate Phone Number
- */
-function validatePhone() {
-  const phoneInput = document.getElementById('checkoutPhone');
-  const phoneError = document.getElementById('phoneError');
-  const phone = phoneInput.value.trim();
-  
-  // Remove non-numeric characters
-  phoneInput.value = phone.replace(/\D/g, '');
-  
-  const phoneRegex = /^[6-9][0-9]{9}$/;
-  
-  if (phone.length === 0) {
-    phoneInput.classList.remove('is-valid', 'is-invalid');
-    return false;
-  } else if (!phoneRegex.test(phone)) {
-    phoneInput.classList.remove('is-valid');
-    phoneInput.classList.add('is-invalid');
-    phoneError.textContent = 'Please enter a valid 10-digit Indian mobile number (starting with 6-9)';
-    return false;
-  } else {
-    phoneInput.classList.remove('is-invalid');
-    phoneInput.classList.add('is-valid');
-    return true;
-  }
-}
-
-/**
- * Validate Address
- */
-function validateAddress() {
-  const addressInput = document.getElementById('checkoutAddress');
-  const addressError = document.getElementById('addressError');
-  const address = addressInput.value.trim();
-  
-  if (address.length === 0) {
-    addressInput.classList.remove('is-valid', 'is-invalid');
-    addressError.textContent = 'Please enter your house/flat number';
-    return false;
-  } else if (address.length < 3) {
-    addressInput.classList.remove('is-valid');
-    addressInput.classList.add('is-invalid');
-    addressError.textContent = 'Address is too short (minimum 3 characters)';
-    return false;
-  } else {
-    addressInput.classList.remove('is-invalid');
-    addressInput.classList.add('is-valid');
-    return true;
-  }
-}
-
-/**
- * Validate Area (Must be Urban Estate 2)
- */
-function validateArea() {
-  const areaInput = document.getElementById('checkoutArea');
-  const areaError = document.getElementById('areaError');
-  const area = areaInput.value.trim().toLowerCase();
-  
-  // Valid area keywords
-  const validKeywords = [
-    'urban estate 2',
-    'urban estate2',
-    'urbanestate 2',
-    'urbanestate2',
-    'ue2',
-    'ue 2',
-    'u.e.2',
-    'u.e. 2',
-    'hisar ue2',
-    'hisar urban estate 2'
-  ];
-  
-  if (area.length === 0) {
-    areaInput.classList.remove('is-valid', 'is-invalid');
-    return false;
-  }
-  
-  // Check if area contains any valid keyword
-  const isValid = validKeywords.some(keyword => area.includes(keyword));
-  
-  if (!isValid) {
-    areaInput.classList.remove('is-valid');
-    areaInput.classList.add('is-invalid');
-    areaError.innerHTML = `
-      <i class="bi bi-exclamation-triangle"></i> 
-      <strong>Delivery available only within Urban Estate 2</strong> — please update your address
-    `;
-    return false;
-  } else {
-    areaInput.classList.remove('is-invalid');
-    areaInput.classList.add('is-valid');
-    return true;
-  }
-}
-/**
- * Confirm Checkout Order (UPDATED to use saved address)
- */
- async function confirmCheckoutOrder() {
-  console.log('✅ Confirming order...');
-  
-  // ✅ Check if delivery address is saved
-  if (!savedDeliveryAddress) {
-    alert('⚠️ Please save your delivery address first!\n\nClick "Edit" button to add your delivery address.');
-    return;
-  }
-  
-  // Prepare order data with saved address
-  const orderData = {
-    orderId: generateOrderId(),
-    customerId: window.currentUser.uid,
-    customerName: savedDeliveryAddress.name,
-    customerEmail: window.currentUser.email,
-    shopId: cart.shopId,
-    shopName: cart.shopName,
-    shopOwnerId: cart.shopOwnerId,
-    items: cart.items.map(item => ({
-      id: item.id,
-      name: item.name,
-      price: item.price,
-      quantity: item.quantity,
-      brand: item.brand || '',
-      size: item.size || ''
-    })),
-    deliveryAddress: {
-      name: savedDeliveryAddress.name,
-      phone: savedDeliveryAddress.phone,
-      house: savedDeliveryAddress.house,
-      area: savedDeliveryAddress.area,
-      landmark: savedDeliveryAddress.landmark || '',
-      fullAddress: savedDeliveryAddress.fullAddress
-    },
-    subtotal: cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-    deliveryFee: 0,
-    tax: 0,
-    total: cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-    paymentMethod: 'COD',
-    status: 'pending',
-    placedAt: new Date().toISOString(),
-    deliveredAt: null,
-    estimatedDelivery: calculateEstimatedDelivery()
-  };
-  
-  // Disable confirm button
-  const confirmBtn = document.getElementById('confirmOrderBtn');
-  if (confirmBtn) {
-    confirmBtn.disabled = true;
-    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Placing Order...';
-  }
-  
-  try {
-    // Save order to Firestore
-    const { collection, addDoc, serverTimestamp } = window.firebaseImports;
-    
-    const ordersRef = collection(window.db, 'shops', cart.shopId, 'orders');
-    const docRef = await addDoc(ordersRef, {
-      ...orderData,
-      placedAt: serverTimestamp()
-    });
-    
-    console.log('✅ Order placed successfully:', docRef.id);
-    
-    // Clear cart
-    clearCart();
-    
-    // Close modal
-    const checkoutModal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
-    if (checkoutModal) {
-      checkoutModal.hide();
-    }
-    
-    // Show success message
-    showOrderSuccessModal(orderData.orderId, orderData.total);
-    
-    // Navigate to My Orders page
-    setTimeout(() => {
-      if (typeof navigateToCustomerOrders === 'function') {
-        navigateToCustomerOrders();
-      } else {
-        goBackHome();
-      }
-    }, 2000);
-    
-  } catch (error) {
-    console.error('❌ Error placing order:', error);
-    alert('❌ Failed to place order. Please try again.\n\nError: ' + error.message);
-    
-    // Re-enable button
-    if (confirmBtn) {
-      confirmBtn.disabled = false;
-      confirmBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Order';
-    }
-  }
-}
-
-// Make it global
-window.confirmCheckoutOrder = confirmCheckoutOrder;
-
-/**
- * Generate Unique Order ID
- */
- function generateOrderId() {
-  const timestamp = Date.now();
-  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
-  return `ORD-${timestamp}-${random}`;
-}
-
-/**
- * Calculate Estimated Delivery Time
- */
-function calculateEstimatedDelivery() {
-  const now = new Date();
-  const deliveryTime = new Date(now.getTime() + (30 * 60 * 1000)); // 30 minutes
-  
-  return deliveryTime.toLocaleTimeString('en-IN', {
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
-}
-
-/**
- * Populate Checkout Summary
- */
-function populateCheckoutSummary() {
-  const itemsList = document.getElementById('checkoutItemsList');
-  const itemCount = document.getElementById('checkoutItemCount');
-  const subtotal = document.getElementById('checkoutSubtotal');
-  const total = document.getElementById('checkoutTotal');
-  
-  if (!itemsList) return;
-  
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  // Populate items
-  let html = '';
-  cart.items.forEach(item => {
-    html += `
-      <div class="d-flex justify-content-between mb-2" style="padding: 8px; background: #f8f9fa; border-radius: 6px;">
-        <div style="flex: 1;">
-          <strong>${escapeHtml(item.name)}</strong>
-          <br>
-          <small class="text-muted">Qty: ${item.quantity} × ₹${item.price.toFixed(2)}</small>
-        </div>
-        <div style="text-align: right;">
-          <strong>₹${(item.price * item.quantity).toFixed(2)}</strong>
-        </div>
-      </div>
-    `;
-  });
-  
-  itemsList.innerHTML = html;
-  
-  // Update totals
-  if (itemCount) itemCount.textContent = totalItems;
-  if (subtotal) subtotal.textContent = totalAmount.toFixed(2);
-  if (total) total.textContent = totalAmount.toFixed(2);
-}
-
-/**
- * Show Order Success Modal
- */
-function showOrderSuccessModal(orderId, total) {
-  alert(`🎉 Order Placed Successfully!\n\nOrder ID: ${orderId}\nTotal: ₹${total.toFixed(2)}\n\nYou will be redirected to My Orders page.`);
-}
-
-// Make functions global
-window.generateOrderId = generateOrderId;
-window.calculateEstimatedDelivery = calculateEstimatedDelivery;
-window.populateCheckoutSummary = populateCheckoutSummary;
-window.showOrderSuccessModal = showOrderSuccessModal;
-
-
-// Make functions global
-window.proceedToCheckout = proceedToCheckout;
-window.validatePhone = validatePhone;
-window.validateAddress = validateAddress;
-window.validateArea = validateArea;
-window.confirmCheckoutOrder = confirmCheckoutOrder;
-
-
-/**
- * Update Sidebar Based on User Role
- */
- function updateSidebarForUser() {
-  const myOrdersLink = document.getElementById('myOrdersLink');
-  
-  if (!myOrdersLink) {
-    console.warn('⚠️ myOrdersLink element not found in sidebar');
-    return;
-  }
-  
-  // Show "My Orders" only for customers
-  if (window.currentUser && window.currentUser.role === 'customer') {
-    myOrdersLink.style.display = 'block';
-    console.log('✅ My Orders link shown (customer role)');
-  } else {
-    myOrdersLink.style.display = 'none';
-    console.log('ℹ️ My Orders link hidden (not a customer)');
-  }
-  
-  // You can add more role-based sidebar updates here
-  // Example: Show "Manage Shop" only for shopowners
-}
-
-// Make it global
-window.updateSidebarForUser = updateSidebarForUser;
-
-
-
-/**
- * Show Mini Cart Footer (UPDATED with padding management)
- */
- function showMiniCartFooter() {
-  const miniCartFooter = document.getElementById('miniCartFooter');
-  const miniCartSpacer = document.getElementById('miniCartSpacer');
-  
-  if (miniCartFooter) {
-    miniCartFooter.style.display = 'block';
-  }
-  
-  // ✅ NEW: Show spacer to push content up
-  if (miniCartSpacer) {
-    miniCartSpacer.style.display = 'block';
-  }
-  
-  // ✅ NEW: Add bottom padding to all page containers
-  addBottomPaddingToPages();
-  
-  console.log('✅ Mini cart footer shown with padding');
-}
-
-/**
- * Hide Mini Cart Footer (UPDATED with padding management)
- */
-function hideMiniCartFooter() {
-  const miniCartFooter = document.getElementById('miniCartFooter');
-  const miniCartSpacer = document.getElementById('miniCartSpacer');
-  
-  if (miniCartFooter) {
-    miniCartFooter.style.display = 'none';
-  }
-  
-  // ✅ NEW: Hide spacer
-  if (miniCartSpacer) {
-    miniCartSpacer.style.display = 'none';
-  }
-  
-  // ✅ NEW: Remove bottom padding from all pages
-  removeBottomPaddingFromPages();
-  
-  console.log('✅ Mini cart footer hidden, padding removed');
-}
-
-/**
- * Add Bottom Padding to All Page Containers (NEW)
- */
-function addBottomPaddingToPages() {
-  // Main app container
-  const mainApp = document.getElementById('mainApp');
-  if (mainApp) {
-    const mainContent = mainApp.querySelector('.main-content, .container');
-    if (mainContent) {
-      mainContent.style.paddingBottom = '100px';
-    }
-  }
-  
-  // Shop products page
-  const shopProductsPage = document.getElementById('shopProductsPage');
-  if (shopProductsPage) {
-    const productsContainer = shopProductsPage.querySelector('.container');
-    if (productsContainer) {
-      productsContainer.style.paddingBottom = '100px';
-    }
-  }
-  
-  // Shop products grid
-  const shopProductsGrid = document.getElementById('shopProductsGrid');
-  if (shopProductsGrid) {
-    shopProductsGrid.style.paddingBottom = '20px';
-  }
-  
-  // My Orders page
-  const myOrdersPage = document.getElementById('myOrdersPage');
-  if (myOrdersPage) {
-    const ordersContainer = myOrdersPage.querySelector('.container');
-    if (ordersContainer) {
-      ordersContainer.style.paddingBottom = '100px';
-    }
-  }
-  
-  console.log('✅ Bottom padding added to all pages');
-}
-
-/**
- * Remove Bottom Padding from All Page Containers (NEW)
- */
-function removeBottomPaddingFromPages() {
-  // Main app container
-  const mainApp = document.getElementById('mainApp');
-  if (mainApp) {
-    const mainContent = mainApp.querySelector('.main-content, .container');
-    if (mainContent) {
-      mainContent.style.paddingBottom = '20px';
-    }
-  }
-  
-  // Shop products page
-  const shopProductsPage = document.getElementById('shopProductsPage');
-  if (shopProductsPage) {
-    const productsContainer = shopProductsPage.querySelector('.container');
-    if (productsContainer) {
-      productsContainer.style.paddingBottom = '20px';
-    }
-  }
-  
-  // Shop products grid
-  const shopProductsGrid = document.getElementById('shopProductsGrid');
-  if (shopProductsGrid) {
-    shopProductsGrid.style.paddingBottom = '0';
-  }
-  
-  // My Orders page
-  const myOrdersPage = document.getElementById('myOrdersPage');
-  if (myOrdersPage) {
-    const ordersContainer = myOrdersPage.querySelector('.container');
-    if (ordersContainer) {
-      ordersContainer.style.paddingBottom = '20px';
-    }
-  }
-  
-  console.log('✅ Bottom padding removed from all pages');
-}
-
-// Make functions global
-window.showMiniCartFooter = showMiniCartFooter;
-window.hideMiniCartFooter = hideMiniCartFooter;
-window.addBottomPaddingToPages = addBottomPaddingToPages;
-window.removeBottomPaddingFromPages = removeBottomPaddingFromPages;
-
-
-/**
- * ==========================================
- * DELIVERY ADDRESS MANAGEMENT
- * ==========================================
- */
-
-// Global variable for saved address
-let savedDeliveryAddress = null;
-/**
- * Open Delivery Address Modal (UPDATED for nested modal support)
- */
- function openDeliveryAddressModal() {
-  console.log('📍 Opening delivery address modal');
-  
-  if (!window.currentUser) {
-    alert('⚠️ Please sign in to manage your delivery address.');
-    return;
-  }
-  
-  // Load saved address
-  loadSavedDeliveryAddress();
-  
-  // ✅ Get references to both modals
-  const addressModalEl = document.getElementById('deliveryAddressModal');
-  const checkoutModalEl = document.getElementById('checkoutModal');
-  
-  // ✅ Check if checkout modal is open
-  const isCheckoutOpen = checkoutModalEl && checkoutModalEl.classList.contains('show');
-  
-  if (isCheckoutOpen) {
-    console.log('🔄 Checkout modal is open, opening address modal on top');
-    
-    // ✅ Store reference that we came from checkout
-    window.openedFromCheckout = true;
-    
-    // ✅ Create and show address modal with higher z-index
-    const addressModal = new bootstrap.Modal(addressModalEl, {
-      backdrop: 'static',
-      keyboard: false
-    });
-    addressModal.show();
-    
-    // ✅ Force z-index after modal opens
-    setTimeout(() => {
-      addressModalEl.style.zIndex = '10100';
-      
-      // Find and update backdrop z-index
-      const backdrops = document.querySelectorAll('.modal-backdrop');
-      if (backdrops.length > 0) {
-        const lastBackdrop = backdrops[backdrops.length - 1];
-        lastBackdrop.style.zIndex = '10050';
-      }
-    }, 100);
-    
-  } else {
-    // Normal opening (not from checkout)
-    window.openedFromCheckout = false;
-    const addressModal = new bootstrap.Modal(addressModalEl);
-    addressModal.show();
-  }
-}
-
-
-/**
- * Load Saved Delivery Address from Firestore
- */
-async function loadSavedDeliveryAddress() {
-  console.log('📦 Loading saved delivery address...');
-  
-  try {
-    const { doc, getDoc } = window.firebaseImports;
-    
-    const addressDocRef = doc(window.db, 'users', window.currentUser.uid, 'deliveryAddress', 'default');
-    const addressDoc = await getDoc(addressDocRef);
-    
-    if (addressDoc.exists()) {
-      savedDeliveryAddress = addressDoc.data();
-      console.log('✅ Loaded saved address:', savedDeliveryAddress);
-      
-      // Pre-fill form
-      document.getElementById('addressName').value = savedDeliveryAddress.name || '';
-      document.getElementById('addressPhone').value = savedDeliveryAddress.phone || '';
-      document.getElementById('addressHouse').value = savedDeliveryAddress.house || '';
-      document.getElementById('addressLandmark').value = savedDeliveryAddress.landmark || '';
-      
-    } else {
-      console.log('ℹ️ No saved address found');
-      
-      // Pre-fill with user data
-      if (window.currentUser.displayName) {
-        document.getElementById('addressName').value = window.currentUser.displayName;
-      }
-      
-      savedDeliveryAddress = null;
-    }
-    
-  } catch (error) {
-    console.error('❌ Error loading saved address:', error);
-  }
-}
-
-/**
- * Save Delivery Address (UPDATED to refresh checkout after save)
- */
- async function saveDeliveryAddress() {
-  console.log('💾 Saving delivery address...');
-  
-  // Validate form
-  const form = document.getElementById('deliveryAddressForm');
-  if (!form.checkValidity()) {
-    form.classList.add('was-validated');
-    alert('⚠️ Please fill in all required fields!');
-    return;
-  }
-  
-  // Get form data
-  const name = document.getElementById('addressName').value.trim();
-  const phone = document.getElementById('addressPhone').value.trim();
-  const house = document.getElementById('addressHouse').value.trim();
-  const landmark = document.getElementById('addressLandmark').value.trim();
-  
-  // Validate phone
-  if (!/^[0-9]{10}$/.test(phone)) {
-    alert('⚠️ Please enter a valid 10-digit phone number!');
-    document.getElementById('addressPhone').focus();
-    return;
-  }
-  
-  // Prepare address data
-  const addressData = {
-    name: name,
-    phone: phone,
-    house: house,
-    area: 'Urban Estate 2, Hisar',
-    landmark: landmark,
-    fullAddress: `${house}, ${landmark ? landmark + ', ' : ''}Urban Estate 2, Hisar`,
-    updatedAt: new Date().toISOString()
-  };
-  
-  try {
-    const { doc, setDoc, serverTimestamp } = window.firebaseImports;
-    
-    const addressDocRef = doc(window.db, 'users', window.currentUser.uid, 'deliveryAddress', 'default');
-    
-    await setDoc(addressDocRef, {
-      ...addressData,
-      updatedAt: serverTimestamp()
-    });
-    
-    console.log('✅ Address saved successfully');
-    
-    // Update global variable
-    savedDeliveryAddress = addressData;
-    
-    // Close modal
-    closeDeliveryAddressModal();
-    
-    // ✅ If opened from checkout, update checkout display
-    if (window.openedFromCheckout) {
-      setTimeout(() => {
-        updateCheckoutAddress();
-      }, 400);
-    }
-    
-    // Show success message
-    alert('✅ Delivery address saved successfully!');
-    
-  } catch (error) {
-    console.error('❌ Error saving address:', error);
-    alert('❌ Failed to save address. Please try again.\n\nError: ' + error.message);
-  }
-}
-
-
-/**
- * Get Saved Delivery Address (for checkout)
- */
-function getSavedDeliveryAddress() {
-  return savedDeliveryAddress;
-}
-
-// Make functions global
-window.openDeliveryAddressModal = openDeliveryAddressModal;
-window.loadSavedDeliveryAddress = loadSavedDeliveryAddress;
-window.saveDeliveryAddress = saveDeliveryAddress;
-window.getSavedDeliveryAddress = getSavedDeliveryAddress;
-window.savedDeliveryAddress = savedDeliveryAddress;
-
-console.log('✅ Delivery address management loaded');
-
-
-/**
- * Close Delivery Address Modal (UPDATED)
- */
- function closeDeliveryAddressModal() {
-  console.log('❌ Closing delivery address modal');
-  
-  const addressModalEl = document.getElementById('deliveryAddressModal');
-  const addressModal = bootstrap.Modal.getInstance(addressModalEl);
-  
-  if (addressModal) {
-    addressModal.hide();
-  }
-  
-  // ✅ If opened from checkout, restore checkout modal focus
-  if (window.openedFromCheckout) {
-    setTimeout(() => {
-      const checkoutModalEl = document.getElementById('checkoutModal');
-      if (checkoutModalEl && checkoutModalEl.classList.contains('show')) {
-        // Restore focus to checkout modal
-        checkoutModalEl.focus();
-      }
-      window.openedFromCheckout = false;
-    }, 300);
-  }
-}
-
-/**
- * Update Checkout Address Display (NEW)
- */
- function updateCheckoutAddress() {
-  console.log('🔄 Updating checkout address display');
-  
-  const savedAddressDiv = document.getElementById('checkoutSavedAddress');
-  const noAddressDiv = document.getElementById('checkoutNoAddress');
-  
-  if (savedDeliveryAddress) {
-    // Show saved address
-    if (savedAddressDiv) {
-      savedAddressDiv.style.display = 'block';
-      document.getElementById('savedAddressName').textContent = savedDeliveryAddress.name;
-      document.getElementById('savedAddressDetails').textContent = savedDeliveryAddress.fullAddress;
-      document.getElementById('savedAddressPhone').textContent = savedDeliveryAddress.phone;
-    }
-    if (noAddressDiv) {
-      noAddressDiv.style.display = 'none';
-    }
-    console.log('✅ Checkout address updated');
-  }
-}
-
-// Make functions global
-window.openDeliveryAddressModal = openDeliveryAddressModal;
-window.closeDeliveryAddressModal = closeDeliveryAddressModal;
-window.saveDeliveryAddress = saveDeliveryAddress;
-window.updateCheckoutAddress = updateCheckoutAddress;
-window.openedFromCheckout = false;
-
-/**
- * Modal Event Listeners (UPDATED for nested modals)
- */
- document.addEventListener('DOMContentLoaded', function() {
-  
-  // Delivery Address Modal Events
-  const deliveryAddressModal = document.getElementById('deliveryAddressModal');
-  if (deliveryAddressModal) {
-    deliveryAddressModal.addEventListener('shown.bs.modal', function () {
-      console.log('📍 Delivery address modal shown');
-      
-      // Force z-index
-      this.style.zIndex = '10100';
-      
-      // Update backdrop z-index
-      const backdrops = document.querySelectorAll('.modal-backdrop');
-      if (backdrops.length > 0) {
-        const lastBackdrop = backdrops[backdrops.length - 1];
-        lastBackdrop.style.zIndex = '10050';
-      }
-    });
-    
-    deliveryAddressModal.addEventListener('hidden.bs.modal', function () {
-      console.log('❌ Delivery address modal hidden');
-      
-      // Clean up backdrop if needed
-      const backdrops = document.querySelectorAll('.modal-backdrop');
-      if (backdrops.length > 1) {
-        // Remove extra backdrops
-        for (let i = 1; i < backdrops.length; i++) {
-          backdrops[i].remove();
-        }
-      }
-    });
-  }
-  
-  // Checkout Modal Events
-  const checkoutModal = document.getElementById('checkoutModal');
-  if (checkoutModal) {
-    checkoutModal.addEventListener('show.bs.modal', function () {
-      console.log('📦 Checkout modal opening');
-      if (typeof hideMiniCartFooter === 'function') {
-        hideMiniCartFooter();
-      }
-    });
-    
-    checkoutModal.addEventListener('hidden.bs.modal', function () {
-      console.log('📦 Checkout modal closed');
-      
-      // Show mini-cart if cart has items and not on cart page
-      const cartPage = document.getElementById('cartPage');
-      const isOnCartPage = cartPage && cartPage.style.display !== 'none';
-      
-      if (!isOnCartPage && cart.items.length > 0) {
-        if (typeof updateMiniCart === 'function') {
-          updateMiniCart();
-        }
-      }
-    });
-  }
-  
-  console.log('✅ Modal event listeners attached');
-});
 
 /**
  * ==========================================
@@ -5648,181 +4109,6 @@ window.refreshFeaturedProductsDisplay = refreshFeaturedProductsDisplay;
 
 console.log('✅ Featured products management loaded (FIXED VERSION)');
 
-/**
- * Check Shop Ownership (Helper for Debugging)
- */
- function checkShopOwnership() {
-  if (!currentShopData) {
-    console.log('❌ No shop data available');
-    return false;
-  }
-  
-  if (!window.currentUser) {
-    console.log('❌ No user signed in');
-    return false;
-  }
-  
-  const isOwner = window.currentUser.role === 'shopowner' && 
-                  window.currentUser.uid === currentShopData.ownerId;
-  
-  console.log('🔍 Ownership Check:');
-  console.log('  User:', window.currentUser.email);
-  console.log('  User UID:', window.currentUser.uid);
-  console.log('  User Role:', window.currentUser.role);
-  console.log('  Shop:', currentShopData.shopName);
-  console.log('  Shop Owner UID:', currentShopData.ownerId);
-  console.log('  Is Owner?', isOwner);
-  
-  return isOwner;
-}
-
-// Make it global
-window.checkShopOwnership = checkShopOwnership;
-
-
-/**
- * Manually Toggle Add Products Button (For Testing)
- */
- function toggleAddProductsButton(show) {
-  const addProductsBtn = document.getElementById('addProductsBtn');
-  const headerSpacer = document.getElementById('headerSpacer');
-  
-  if (!addProductsBtn) {
-    console.error('❌ addProductsBtn element not found');
-    return;
-  }
-  
-  if (show) {
-    addProductsBtn.style.display = 'block';
-    if (headerSpacer) headerSpacer.style.display = 'none';
-    console.log('✅ Add Products button shown');
-  } else {
-    addProductsBtn.style.display = 'none';
-    if (headerSpacer) headerSpacer.style.display = 'block';
-    console.log('🚫 Add Products button hidden');
-  }
-}
-
-// Make it global
-window.toggleAddProductsButton = toggleAddProductsButton;
-
-
-/**
- * ==========================================
- * AUTO-REFRESH ADD PRODUCTS BUTTON VISIBILITY
- * ==========================================
- */
-
-/**
- * Re-check and Update Add Products Button Visibility
- * (Runs after user data is fully loaded)
- */
- function recheckAddProductsButtonVisibility() {
-  console.log('🔄 Re-checking Add Products button visibility...');
-  
-  const addProductsBtn = document.getElementById('addProductsBtn');
-  const headerSpacer = document.getElementById('headerSpacer');
-  
-  if (!addProductsBtn) {
-    console.log('⚠️ Add Products button not found, skipping check');
-    return;
-  }
-  
-  // Check if we're on shop products page
-  const shopProductsPage = document.getElementById('shopProductsPage');
-  if (!shopProductsPage || shopProductsPage.style.display === 'none') {
-    console.log('⚠️ Not on shop products page, skipping check');
-    return;
-  }
-  
-  // Check if shop data exists
-  if (!currentShopData) {
-    console.log('⚠️ No shop data available, hiding button');
-    addProductsBtn.style.display = 'none';
-    if (headerSpacer) headerSpacer.style.display = 'block';
-    return;
-  }
-  
-  // Check ownership
-  const isShopowner = window.currentUser && window.currentUser.role === 'shopowner';
-  const ownsThisShop = window.currentUser && window.currentUser.uid === currentShopData.ownerId;
-  
-  console.log('📊 Ownership Check Results:');
-  console.log('  - Current User:', window.currentUser?.email || 'Not signed in');
-  console.log('  - User UID:', window.currentUser?.uid || 'N/A');
-  console.log('  - User Role:', window.currentUser?.role || 'N/A');
-  console.log('  - Shop:', currentShopData.shopName);
-  console.log('  - Shop Owner UID:', currentShopData.ownerId);
-  console.log('  - Is Shopowner?', isShopowner);
-  console.log('  - Owns This Shop?', ownsThisShop);
-  
-  if (isShopowner && ownsThisShop) {
-    // Show button
-    console.log('✅ User owns this shop - SHOWING button');
-    addProductsBtn.style.display = 'block';
-    if (headerSpacer) headerSpacer.style.display = 'none';
-  } else {
-    // Hide button
-    console.log('🚫 User does not own this shop - HIDING button');
-    addProductsBtn.style.display = 'none';
-    if (headerSpacer) headerSpacer.style.display = 'block';
-  }
-}
-
-/**
- * Start Periodic Button Visibility Check
- * (Checks every 500ms for 5 seconds after page load)
- */
-function startButtonVisibilityCheck() {
-  let checkCount = 0;
-  const maxChecks = 10; // 10 checks = 5 seconds
-  
-  const intervalId = setInterval(() => {
-    checkCount++;
-    console.log(`🔄 Button visibility check #${checkCount}/${maxChecks}`);
-    
-    recheckAddProductsButtonVisibility();
-    
-    // Stop after max checks or if button is visible
-    const addProductsBtn = document.getElementById('addProductsBtn');
-    if (checkCount >= maxChecks || (addProductsBtn && addProductsBtn.style.display === 'block')) {
-      console.log('✅ Stopping button visibility checks');
-      clearInterval(intervalId);
-    }
-  }, 500);
-}
-
-// Make functions global
-window.recheckAddProductsButtonVisibility = recheckAddProductsButtonVisibility;
-window.startButtonVisibilityCheck = startButtonVisibilityCheck;
-
-console.log('✅ Button visibility auto-refresh system loaded');
-
-/**
- * Simple Button Visibility Fix (Retries 3 times)
- */
- function autoShowAddProductsButton() {
-  const addProductsBtn = document.getElementById('addProductsBtn');
-  const headerSpacer = document.getElementById('headerSpacer');
-  
-  if (!addProductsBtn || !currentShopData || !window.currentUser) return;
-  
-  const isOwner = window.currentUser.role === 'shopowner' && 
-                  window.currentUser.uid === currentShopData.ownerId;
-  
-  if (isOwner) {
-    addProductsBtn.style.display = 'block';
-    if (headerSpacer) headerSpacer.style.display = 'none';
-    console.log('✅ Add Products button auto-shown');
-  }
-}
-
-// Run 3 times with delays
-setTimeout(autoShowAddProductsButton, 300);
-setTimeout(autoShowAddProductsButton, 800);
-setTimeout(autoShowAddProductsButton, 1500);
-
-window.autoShowAddProductsButton = autoShowAddProductsButton;
 
 
 
