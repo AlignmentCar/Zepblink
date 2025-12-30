@@ -911,3 +911,114 @@
     font-size: 1rem;
   }
 }
+
+/* ==========================================
+   CHECKOUT & ORDERS STYLES
+   ========================================== */
+
+/* Step Indicator */
+.step-circle {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #e0e0e0;
+  color: #999;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 1.1rem;
+  margin-bottom: 8px;
+  transition: all 0.3s;
+}
+
+.step-circle.active {
+  background: #25D366;
+  color: white;
+}
+
+.step-circle.completed {
+  background: #128C7E;
+  color: white;
+}
+
+/* Order Card */
+.order-card {
+  background: white;
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 15px;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+  transition: all 0.2s;
+  border-left: 4px solid #e0e0e0;
+}
+
+.order-card:hover {
+  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+  transform: translateY(-2px);
+}
+
+.order-card.pending {
+  border-left-color: #ff9800;
+}
+
+.order-card.accepted {
+  border-left-color: #25D366;
+}
+
+.order-card.delivered {
+  border-left-color: #2196f3;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-size: 0.85rem;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.status-badge.pending {
+  background: #fff3e0;
+  color: #e65100;
+}
+
+.status-badge.accepted {
+  background: #e8f5e9;
+  color: #2e7d32;
+}
+
+.status-badge.delivered {
+  background: #e3f2fd;
+  color: #1565c0;
+}
+
+/* Notification Badge on Shop Card */
+.shop-order-badge {
+  position: absolute;
+  top: 10px;
+  right: 10px;
+  background: #ff5252;
+  color: white;
+  border-radius: 50%;
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.75rem;
+  font-weight: 700;
+  box-shadow: 0 2px 8px rgba(255, 82, 82, 0.4);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.1);
+  }
+}
