@@ -36,10 +36,12 @@
   getDoc,
   getDocs,
   setDoc,
+  addDoc,
   query,
   where,
   serverTimestamp
 } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
 
 
       // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG
@@ -59,7 +61,7 @@
       window.auth = auth;
       window.db = db;
       window.firebaseImports = {
-  collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp,
+  collection, doc, getDoc, getDocs, setDoc, addDoc, query, where, serverTimestamp,
   signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
   onAuthStateChanged, signOut
 };
@@ -961,15 +963,20 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
      <div class="page-view" id="shopProductsPage" style="display: none;">
   
       <!-- Header -->
-      <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <button class="btn btn-light" onclick="goBackHome()" style="border-radius: 10px; font-weight: 600;">
-          <i class="bi bi-arrow-left me-2"></i>Back
-        </button>
-        <h3 style="margin: 0; font-weight: 700; flex: 1; text-align: center;">
-          <i class="bi bi-shop me-2"></i><span id="shopProductsPageTitle">Shop Products</span>
-        </h3>
-        <div style="width: 80px;"></div> <!-- Spacer for centering -->
-      </div>
+<div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+  <button class="btn btn-light" onclick="goBackHome()" style="border-radius: 10px; font-weight: 600;">
+    <i class="bi bi-arrow-left me-2"></i>Back
+  </button>
+  <h3 style="margin: 0; font-weight: 700; flex: 1; text-align: center;">
+    <i class="bi bi-shop me-2"></i><span id="shopProductsPageTitle">Shop Products</span>
+  </h3>
+  <!-- ✅ NEW: Add Products Button (Shopowners Only) -->
+  <button id="addProductsBtn" class="btn btn-light" onclick="openAddProductsModal()" style="border-radius: 10px; font-weight: 600; display: none;">
+    <i class="bi bi-plus-lg me-2"></i>Add Products
+  </button>
+  <div id="headerSpacer" style="width: 80px;"></div> <!-- Spacer for centering -->
+</div>
+
       
       <!-- Shop Info Card -->
       <div class="container-fluid" style="padding: 20px;">
@@ -1007,6 +1014,89 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
       </div>
       
     </div>
+
+    <!-- ============================================
+     ADD PRODUCTS MODAL (FOR SHOPOWNERS)
+     ============================================ -->
+<div class="modal fade" id="addProductsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
+        <h5 class="modal-title" style="font-weight: 700;">
+          <i class="bi bi-plus-circle me-2"></i>Add Multiple Products
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="modal-body p-4">
+        
+        <!-- Instructions -->
+        <div class="alert alert-info" style="font-size: 14px;">
+          <i class="bi bi-info-circle"></i>
+          Enter product names below. Press <strong>Enter</strong> or <strong>Comma (,)</strong> after each product, or click <strong>Add to List</strong>.
+        </div>
+        
+        <!-- Input Field -->
+        <input 
+          id="productInput" 
+          type="text" 
+          class="form-control form-control-lg mb-2" 
+          placeholder="e.g., Ceramic Tiles, Wall Tiles, Floor Tiles..."
+          onkeydown="handleProductInputKeydown(event)"
+          oninput="window.lastProductInput = this.value"
+          autocomplete="off"
+          style="color: #212529; background-color: #fff;"
+        >
+        
+        <!-- Add to List Button -->
+        <button 
+          type="button"
+          class="btn btn-success w-100"
+          onclick="addProductToList()"
+          style="padding: 10px; font-size: 16px;"
+        >
+          <i class="bi bi-plus-lg"></i> Add to List
+        </button>
+        
+        <!-- Preview Section -->
+        <div style="margin-top: 20px;">
+          <p style="font-weight: 600; margin-bottom: 10px; font-size: 14px; color: #333;" id="productsPreviewCount">
+            📝 Products to Save (0):
+          </p>
+          <div id="productsPreviewList" style="
+            background: #f8f9fa; 
+            border: 1px solid #e0e0e0;
+            border-radius: 8px; 
+            max-height: 250px; 
+            overflow-y: auto;
+            min-height: 80px; 
+            padding: 10px;
+          ">
+            <div style="padding: 15px; color: #999; text-align: center; font-size: 14px;">
+              No products added yet
+            </div>
+          </div>
+        </div>
+        
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="border: none; padding: 20px;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px; padding: 10px 24px;">
+          <i class="bi bi-x-circle me-2"></i>Close
+        </button>
+        <button type="button" class="btn btn-success" onclick="saveAllProducts()" style="border-radius: 10px; padding: 10px 24px; font-weight: 600;">
+          <i class="bi bi-check-circle me-2"></i>Save All Products
+        </button>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
 
 
 
@@ -1690,7 +1780,7 @@ let allShopProducts = [];
 /**
  * Navigate to Shop Products Page
  */
-function navigateToShopProducts(shopId, shopName) {
+ function navigateToShopProducts(shopId, shopName) {
   console.log('🏪 Navigating to Shop Products:', shopId, shopName);
   
   // Store current shop data
@@ -1737,6 +1827,32 @@ function navigateToShopProducts(shopId, shopName) {
   
   // Load shop products
   loadShopProducts(currentShopData.ownerId);
+  
+  // ✅ NEW: Show/Hide Add Products button based on ownership
+  const addProductsBtn = document.getElementById('addProductsBtn');
+  const headerSpacer = document.getElementById('headerSpacer');
+  
+  if (window.currentUser && 
+      window.currentUser.role === 'shopowner' && 
+      window.currentUser.uid === currentShopData.ownerId) {
+    // User owns this shop - show Add Products button
+    if (addProductsBtn) {
+      addProductsBtn.style.display = 'block';
+    }
+    if (headerSpacer) {
+      headerSpacer.style.display = 'none';
+    }
+    console.log('✅ Add Products button shown (Shop Owner)');
+  } else {
+    // Hide button for customers or other shopowners
+    if (addProductsBtn) {
+      addProductsBtn.style.display = 'none';
+    }
+    if (headerSpacer) {
+      headerSpacer.style.display = 'block';
+    }
+    console.log('ℹ️ Add Products button hidden (Customer/Other Shopowner)');
+  }
   
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -1985,6 +2101,299 @@ function addToCart(productId) {
   console.log('🛒 Add to cart:', productId);
   alert('🛒 Add to Cart feature coming soon!\n\nProduct ID: ' + productId);
 }
+
+/**
+ * ==========================================
+ * ADD PRODUCTS FUNCTIONALITY (SHOPOWNERS ONLY)
+ * ==========================================
+ */
+
+// Global variables
+let pendingProducts = [];
+
+/**
+ * Open Add Products Modal
+ */
+function openAddProductsModal() {
+  console.log('➕ Opening Add Products modal');
+  
+  // Check if user is shopowner and owns this shop
+  if (!window.currentUser || window.currentUser.role !== 'shopowner') {
+    alert('⚠️ Only shopowners can add products.');
+    return;
+  }
+  
+  if (!currentShopData || currentShopData.ownerId !== window.currentUser.uid) {
+    alert('⚠️ You can only add products to your own shop.');
+    return;
+  }
+  
+  // Reset pending products
+  pendingProducts = [];
+  
+  // Clear input
+  document.querySelectorAll('#productInput').forEach(inp => {
+    inp.value = '';
+    inp.setAttribute('value', '');
+    window.lastProductInput = '';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  
+  // Update preview
+  updateProductsPreviewList();
+  
+  // Open modal
+  const modal = new bootstrap.Modal(document.getElementById('addProductsModal'));
+  modal.show();
+  
+  // Focus on input
+  setTimeout(() => {
+    const input = document.getElementById('productInput');
+    if (input) input.focus();
+  }, 200);
+}
+
+/**
+ * Handle Product Input Keydown (Enter or Comma)
+ */
+function handleProductInputKeydown(event) {
+  const input = document.getElementById('productInput');
+  if (!input) return;
+  
+  // Check if Enter or Comma key
+  if (event.key === 'Enter' || event.key === ',') {
+    event.preventDefault();
+    
+    let value = window.lastProductInput || input.value;
+    value = value.trim();
+    
+    // Remove trailing comma if present
+    if (value.endsWith(',')) {
+      value = value.slice(0, -1).trim();
+    }
+    
+    if (value && value.length > 0) {
+      // Check if already in pending list
+      if (pendingProducts.includes(value)) {
+        alert('⚠️ This product is already in the list!');
+      } else {
+        // Add to pending products
+        pendingProducts.push(value);
+        console.log('✅ Product added to preview:', value);
+        
+        // Update preview
+        updateProductsPreviewList();
+      }
+    }
+    
+    // Clear input
+    forceClearProductInput();
+  }
+}
+
+/**
+ * Add Product to List (Button Click)
+ */
+function addProductToList() {
+  const input = document.getElementById('productInput');
+  if (!input) return;
+  
+  let value = window.lastProductInput || input.value;
+  value = value.trim();
+  
+  if (!value || value.length === 0) {
+    alert('⚠️ Please enter a product name');
+    return;
+  }
+  
+  // Check for duplicates
+  if (pendingProducts.includes(value)) {
+    alert('⚠️ This product is already in the list!');
+    return;
+  }
+  
+  // Add to pending list
+  pendingProducts.push(value);
+  console.log('✅ Product added to preview:', value);
+  
+  // Update preview
+  updateProductsPreviewList();
+  
+  // Clear input
+  forceClearProductInput();
+  
+  // Focus back
+  setTimeout(() => {
+    if (input) input.focus();
+  }, 50);
+}
+
+/**
+ * Force Clear Product Input
+ */
+function forceClearProductInput() {
+  document.querySelectorAll('#productInput').forEach(inp => {
+    inp.value = '';
+    inp.setAttribute('value', '');
+    window.lastProductInput = '';
+    inp.dispatchEvent(new Event('input', { bubbles: true }));
+  });
+  console.log('🧹 Product input cleared');
+}
+
+/**
+ * Update Products Preview List
+ */
+function updateProductsPreviewList() {
+  const previewList = document.getElementById('productsPreviewList');
+  const previewCount = document.getElementById('productsPreviewCount');
+  
+  if (!previewList) {
+    console.error('❌ productsPreviewList not found');
+    return;
+  }
+  
+  if (previewCount) {
+    previewCount.textContent = `📝 Products to Save (${pendingProducts.length}):`;
+  }
+  
+  if (pendingProducts.length === 0) {
+    previewList.innerHTML = `
+      <div style="padding: 15px; color: #999; text-align: center; font-size: 14px;">
+        No products added yet
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  pendingProducts.forEach((product, index) => {
+    html += `
+      <div style="
+        display: flex; justify-content: space-between; align-items: center;
+        padding: 10px 12px; border-bottom: 1px solid #e0e0e0;
+        background: white; transition: background 0.2s;
+      " onmouseover="this.style.background='#f0f0f0'" onmouseout="this.style.background='white'">
+        
+        <span style="font-size: 14px; color: #333; flex: 1;">
+          <strong style="color: #007bff;">${index + 1}.</strong> 
+          <span style="margin-left: 8px;">${escapeHtml(product)}</span>
+        </span>
+        
+        <button onclick="removePendingProduct(${index})" style="
+          background: #dc3545; color: white; border: none; 
+          padding: 5px 10px; border-radius: 5px; cursor: pointer;
+          font-size: 12px; font-weight: 600; transition: background 0.2s;
+        " onmouseover="this.style.background='#c82333'" onmouseout="this.style.background='#dc3545'">
+          <i class="bi bi-x"></i>
+        </button>
+      </div>
+    `;
+  });
+  
+  previewList.innerHTML = html;
+  console.log(`📋 Updated preview: ${pendingProducts.length} products`);
+}
+
+/**
+ * Remove Pending Product
+ */
+function removePendingProduct(index) {
+  if (index < 0 || index >= pendingProducts.length) return;
+  
+  const removed = pendingProducts.splice(index, 1);
+  console.log('🗑️ Removed product:', removed[0]);
+  updateProductsPreviewList();
+}
+
+/**
+ * Save All Products to Firebase
+ */
+async function saveAllProducts() {
+  if (pendingProducts.length === 0) {
+    alert('⚠️ Please add at least one product');
+    return;
+  }
+  
+  if (!currentShopData || !currentShopData.ownerId) {
+    alert('❌ Shop data not found');
+    return;
+  }
+  
+  console.log('💾 Saving', pendingProducts.length, 'products to Firebase...');
+  
+  try {
+    showSyncIndicator('Saving products...', null);
+    
+    const { collection, addDoc } = window.firebaseImports;
+    const ownerId = currentShopData.ownerId;
+    
+    // Products ref for this shop owner
+    const productsRef = collection(window.db, 'tenants', ownerId, 'products');
+    
+    const productsToSave = [...pendingProducts];
+    
+    // Save each product
+    const savePromises = productsToSave.map(async (productName) => {
+      try {
+        await addDoc(productsRef, {
+          name: productName,
+          price: 0,
+          stock: 0,
+          brand: '',
+          size: '',
+          category: '',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString(),
+          ownerId: ownerId,
+          shopId: currentShopData.id,
+          shopName: currentShopData.shopName
+        });
+        console.log('✅ Firebase: Product saved:', productName);
+        return { success: true, product: productName };
+      } catch (error) {
+        console.error('❌ Firebase: Failed to save product:', productName, error);
+        return { success: false, product: productName, error };
+      }
+    });
+    
+    const results = await Promise.all(savePromises);
+    const failed = results.filter(r => !r.success);
+    
+    // Clear input
+    document.querySelectorAll('#productInput').forEach(inp => {
+      inp.value = '';
+      inp.setAttribute('value', '');
+      window.lastProductInput = '';
+      inp.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('addProductsModal'));
+    if (modal) modal.hide();
+    
+    // Clear pending
+    pendingProducts = [];
+    
+    // Reload products
+    await loadShopProducts(ownerId);
+    
+    showSyncIndicator('Products saved!', 2000);
+    
+    if (failed.length > 0) {
+      alert(`⚠️ Warning: ${failed.length} product(s) failed to save.\n\n${productsToSave.length - failed.length} products saved successfully.`);
+    } else {
+      alert(`✅ Success!\n\n${productsToSave.length} product(s) added to your shop!`);
+    }
+    
+  } catch (error) {
+    console.error('❌ Error saving products:', error);
+    showSyncIndicator('Save failed', 1500);
+    alert('❌ Error saving products: ' + error.message);
+  }
+}
+
+
 
 
 
