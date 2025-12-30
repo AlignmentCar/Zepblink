@@ -18,80 +18,45 @@ let ordersLoaded = false;
  * NAVIGATION - MY ORDERS PAGE
  * ==========================================
  */
-
 /**
- * Navigate to My Orders Page
+ * Navigate to Customer Orders (from sidebar)
  */
 function navigateToCustomerOrders() {
-  console.log('📦 Navigating to My Orders');
-  
-  // Check if user is customer
-  if (!window.currentUser || window.currentUser.role !== 'customer') {
-    alert('⚠️ This page is only for customers.');
-    return;
-  }
-  
-  currentPage = 'myOrders';
-  
-  // Get all page elements
-  const mainApp = document.getElementById('mainApp');
-  const myOrdersPage = document.getElementById('myOrdersPage');
-  const shopProductsPage = document.getElementById('shopProductsPage');
-  const cartPage = document.getElementById('cartPage');
-  
-  // Hide all pages
-  if (mainApp) {
-    mainApp.style.display = 'none';
-    mainApp.classList.remove('active');
-  }
-  
-  if (shopProductsPage) {
-    shopProductsPage.classList.remove('active');
-    shopProductsPage.style.display = 'none';
-  }
-  
-  if (cartPage) {
-    cartPage.classList.remove('active');
-    cartPage.style.display = 'none';
-  }
-  
-  // Hide main navbar
-  const mainNavbar = document.getElementById('mainAppNavbar');
-  if (mainNavbar) {
-    mainNavbar.style.display = 'none';
-    console.log('✅ Hidden main app navbar');
-  }
-  
-  const stickyNavbar = document.querySelector('.navbar.sticky-top');
-  if (stickyNavbar) {
-    stickyNavbar.style.display = 'none';
-  }
-  
-  // Show My Orders page
-  if (myOrdersPage) {
-    myOrdersPage.classList.add('active');
-    myOrdersPage.style.display = 'block';
-    myOrdersPage.style.marginTop = '0';
-    myOrdersPage.style.paddingTop = '0';
-    console.log('✅ My Orders page displayed');
-  } else {
-    console.error('❌ myOrdersPage element not found!');
-    return;
-  }
-  
-  // Load orders
-  loadCustomerOrders();
-  
-  // Close sidebar and scroll
-  if (typeof closeSidebar === 'function') {
+    console.log('📦 Navigating to customer orders...');
+    
     closeSidebar();
+    
+    // Check if on mobile with bottom nav
+    if (isMobileDevice() && window.currentUser && window.currentUser.role === 'customer') {
+      // Use mobile tab
+      switchMobileTab('orders');
+    } else {
+      // Use desktop navigation
+      if (typeof loadMyOrders === 'function') {
+        loadMyOrders();
+      } else {
+        loadOrdersDirectly();
+      }
+      
+      // Show orders page
+      const myOrdersPage = document.getElementById('myOrdersPage');
+      if (myOrdersPage) {
+        myOrdersPage.style.display = 'block';
+        myOrdersPage.classList.add('active');
+      }
+      
+      // Hide other pages
+      const mainApp = document.getElementById('mainApp');
+      if (mainApp) {
+        mainApp.style.display = 'none';
+        mainApp.classList.remove('active');
+      }
+    }
   }
   
-  window.scrollTo({ top: 0, behavior: 'smooth' });
+  // Make it global
+  window.navigateToCustomerOrders = navigateToCustomerOrders;
   
-  // Update hash
-  window.location.hash = '#my-orders';
-}
 
 /**
  * Navigate back to Home from My Orders
@@ -1611,11 +1576,10 @@ let cart = {
     }
   }
   
-  
   /**
-   * Add Product to Cart (UPDATED with featured products refresh)
-   */
-  function addToCart(product) {
+ * Add Product to Cart (UPDATED with featured products and mobile badge)
+ */
+function addToCart(product) {
     console.log('🛒 Add to cart:', product);
     
     // Check if customer
@@ -1676,7 +1640,7 @@ let cart = {
     
     // Save and update UI
     saveCart();
-    updateMiniCart();
+    updateMiniCart(); // This will also update mobile badge
     updateCartPage();
     
     // Re-render products to show stepper
@@ -1684,7 +1648,7 @@ let cart = {
       renderShopProducts(allShopProducts);
     }
     
-    // ✅ NEW: Update featured products display
+    // Update featured products display
     if (typeof refreshFeaturedProductsDisplay === 'function') {
       refreshFeaturedProductsDisplay();
     }
@@ -1692,12 +1656,10 @@ let cart = {
     // Show success animation
     showMiniCartBriefly();
   }
-  
-  
   /**
-   * Update Item Quantity in Cart (UPDATED with featured products refresh)
-   */
-  function updateCartQuantity(productId, change) {
+ * Update Item Quantity in Cart (UPDATED with featured products and mobile badge)
+ */
+function updateCartQuantity(productId, change) {
     const item = cart.items.find(i => i.id === productId);
     
     if (!item) {
@@ -1725,7 +1687,7 @@ let cart = {
     console.log(`✅ Updated quantity: ${item.name} = ${item.quantity}`);
     
     saveCart();
-    updateMiniCart();
+    updateMiniCart(); // This will also update mobile badge
     updateCartPage();
     
     // Update product page
@@ -1733,17 +1695,16 @@ let cart = {
       renderShopProducts(allShopProducts);
     }
     
-    // ✅ NEW: Update featured products display
+    // Update featured products display
     if (typeof refreshFeaturedProductsDisplay === 'function') {
       refreshFeaturedProductsDisplay();
     }
   }
   
-  
   /**
-   * Remove Item from Cart (UPDATED with featured products refresh)
-   */
-  function removeFromCart(productId) {
+ * Remove Item from Cart (UPDATED with featured products and mobile badge)
+ */
+function removeFromCart(productId) {
     const itemIndex = cart.items.findIndex(i => i.id === productId);
     
     if (itemIndex === -1) return;
@@ -1762,7 +1723,7 @@ let cart = {
     }
     
     saveCart();
-    updateMiniCart();
+    updateMiniCart(); // This will also update mobile badge
     updateCartPage();
     
     // Update product page if available
@@ -1770,11 +1731,12 @@ let cart = {
       renderShopProducts(allShopProducts);
     }
     
-    // ✅ NEW: Update featured products display
+    // Update featured products display
     if (typeof refreshFeaturedProductsDisplay === 'function') {
       refreshFeaturedProductsDisplay();
     }
   }
+  
   
   
   /**
@@ -1807,11 +1769,10 @@ let cart = {
     console.log('✅ Cart cleared successfully');
   }
   
-  
   /**
-   * Update Mini-Cart Footer (UPDATED with padding management)
-   */
-  function updateMiniCart() {
+ * Update Mini-Cart Footer (UPDATED with mobile badge)
+ */
+function updateMiniCart() {
     const miniCartFooter = document.getElementById('miniCartFooter');
     const miniCartCount = document.getElementById('miniCartCount');
     const miniCartPreview = document.getElementById('miniCartPreview');
@@ -1831,6 +1792,11 @@ let cart = {
         miniCartFooter.style.display = 'none';
       }
       console.log('🚫 Mini-cart hidden (0 items)');
+      
+      // ✅ NEW: Update mobile cart badge
+      if (typeof updateMobileCartBadge === 'function') {
+        updateMobileCartBadge();
+      }
       return;
     }
     
@@ -1858,9 +1824,13 @@ let cart = {
       miniCartTotal.textContent = `₹${totalAmount.toFixed(2)}`;
     }
     
+    // ✅ NEW: Update mobile cart badge
+    if (typeof updateMobileCartBadge === 'function') {
+      updateMobileCartBadge();
+    }
+    
     console.log('✅ Mini-cart updated:', totalItems, 'items, ₹', totalAmount);
   }
-  
   
   /**
    * Show Mini-Cart Briefly (After Add) - with animation
@@ -2175,3 +2145,500 @@ let cart = {
   window.formatPrice = formatPrice;
   
   console.log('✅ Cart management system loaded');
+
+
+  /**
+ * ==========================================
+ * MOBILE BOTTOM NAVIGATION (CUSTOMERS ONLY)
+ * ==========================================
+ */
+
+// Global variables
+let currentMobileTab = 'home';
+
+/**
+ * Initialize Mobile Bottom Navigation
+ */
+function initializeMobileBottomNav() {
+  console.log('📱 Initializing mobile bottom navigation...');
+  
+  // Check if user is customer and on mobile
+  if (!window.currentUser || window.currentUser.role !== 'customer') {
+    console.log('⚠️ User is not a customer, hiding bottom nav');
+    hideMobileBottomNav();
+    return;
+  }
+  
+  // Check if mobile
+  if (!isMobileDevice()) {
+    console.log('⚠️ Not a mobile device, hiding bottom nav');
+    hideMobileBottomNav();
+    return;
+  }
+  
+  // Show bottom nav
+  showMobileBottomNav();
+  
+  // Update cart badge
+  updateMobileCartBadge();
+  
+  // Set initial tab
+  switchMobileTab('home', false);
+  
+  console.log('✅ Mobile bottom navigation initialized');
+}
+
+/**
+ * Check if Mobile Device
+ */
+function isMobileDevice() {
+  return window.innerWidth <= 767;
+}
+
+/**
+ * Show Mobile Bottom Navigation
+ */
+function showMobileBottomNav() {
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) {
+    bottomNav.style.display = 'flex';
+    document.body.classList.add('mobile-customer-view');
+    console.log('✅ Mobile bottom nav shown');
+  }
+}
+
+/**
+ * Hide Mobile Bottom Navigation
+ */
+function hideMobileBottomNav() {
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) {
+    bottomNav.style.display = 'none';
+    document.body.classList.remove('mobile-customer-view');
+    console.log('🚫 Mobile bottom nav hidden');
+  }
+}
+/**
+ * Switch Mobile Tab (UPDATED with proper orders loading)
+ */
+function switchMobileTab(tabName, updateHistory = true) {
+    console.log('🔄 Switching to mobile tab:', tabName);
+    
+    // Update active tab
+    const allTabs = document.querySelectorAll('.nav-tab');
+    allTabs.forEach(tab => {
+      if (tab.dataset.tab === tabName) {
+        tab.classList.add('active');
+      } else {
+        tab.classList.remove('active');
+      }
+    });
+    
+    // Hide all pages
+    const mainApp = document.getElementById('mainApp');
+    const cartPage = document.getElementById('cartPage');
+    const myOrdersPage = document.getElementById('myOrdersPage');
+    const shopProductsPage = document.getElementById('shopProductsPage');
+    const settingsPage = document.getElementById('mobileSettingsPage');
+    
+    if (mainApp) {
+      mainApp.style.display = 'none';
+      mainApp.classList.remove('active');
+    }
+    if (cartPage) {
+      cartPage.style.display = 'none';
+      cartPage.classList.remove('active');
+    }
+    if (myOrdersPage) {
+      myOrdersPage.style.display = 'none';
+      myOrdersPage.classList.remove('active');
+    }
+    if (shopProductsPage) {
+      shopProductsPage.style.display = 'none';
+      shopProductsPage.classList.remove('active');
+    }
+    if (settingsPage) {
+      settingsPage.style.display = 'none';
+      settingsPage.classList.remove('active');
+    }
+    
+    // Show selected page
+    switch (tabName) {
+      case 'home':
+        console.log('📱 Showing home page');
+        if (mainApp) {
+          mainApp.style.display = 'block';
+          mainApp.classList.add('active');
+        }
+        break;
+        
+      case 'orders':
+        console.log('📱 Showing orders page');
+        if (myOrdersPage) {
+          myOrdersPage.style.display = 'block';
+          myOrdersPage.classList.add('active');
+        }
+        
+        // ✅ FIXED: Load orders with a small delay to ensure page is visible
+        setTimeout(() => {
+          console.log('📦 Loading orders...');
+          if (typeof loadMyOrders === 'function') {
+            loadMyOrders();
+          } else if (typeof loadCustomerOrders === 'function') {
+            loadCustomerOrders();
+          } else {
+            console.error('❌ loadMyOrders function not found');
+            // Try to load orders directly
+            loadOrdersDirectly();
+          }
+        }, 100);
+        break;
+        
+      case 'cart':
+        console.log('📱 Showing cart page');
+        if (cartPage) {
+          cartPage.style.display = 'block';
+          cartPage.classList.add('active');
+        }
+        // Update cart page
+        if (typeof updateCartPage === 'function') {
+          updateCartPage();
+        }
+        break;
+        
+      case 'settings':
+        console.log('📱 Showing settings page');
+        if (settingsPage) {
+          settingsPage.style.display = 'block';
+          settingsPage.classList.add('active');
+        } else {
+          // Settings page not created yet
+          showSettingsComingSoon();
+        }
+        break;
+    }
+    
+    // Update current tab
+    currentMobileTab = tabName;
+    
+    // Scroll to top
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+    
+    // Update hash
+    if (updateHistory) {
+      window.location.hash = '#mobile-' + tabName;
+    }
+    
+    console.log('✅ Switched to tab:', tabName);
+  }
+  
+
+/**
+ * Load Orders Directly (Fallback for mobile)
+ */
+async function loadOrdersDirectly() {
+    console.log('📦 Loading orders directly...');
+    
+    const ordersListContainer = document.getElementById('ordersListContainer');
+    const ordersEmptyState = document.getElementById('ordersEmptyState');
+    const orderStats = document.getElementById('orderStats');
+    
+    if (!ordersListContainer) {
+      console.error('❌ ordersListContainer not found');
+      return;
+    }
+    
+    // Show loading
+    ordersListContainer.innerHTML = `
+      <div style="text-align:center; padding:40px;">
+        <div class="spinner-border text-success" role="status"></div>
+        <p class="mt-3">Loading your orders...</p>
+      </div>
+    `;
+    
+    if (!window.currentUser) {
+      console.error('❌ No user signed in');
+      ordersListContainer.innerHTML = `
+        <div class="alert alert-warning">
+          <i class="bi bi-exclamation-triangle"></i> Please sign in to view your orders.
+        </div>
+      `;
+      return;
+    }
+    
+    try {
+      const { collectionGroup, query, where, getDocs, orderBy } = window.firebaseImports;
+      
+      // Query all orders for this customer
+      const ordersRef = collectionGroup(window.db, 'orders');
+      const q = query(
+        ordersRef,
+        where('customerId', '==', window.currentUser.uid),
+        orderBy('createdAt', 'desc')
+      );
+      
+      console.log('🔍 Querying orders for customer:', window.currentUser.uid);
+      
+      const querySnapshot = await getDocs(q);
+      
+      console.log('✅ Found', querySnapshot.size, 'orders');
+      
+      if (querySnapshot.empty) {
+        // No orders found
+        ordersListContainer.innerHTML = '';
+        if (ordersEmptyState) ordersEmptyState.style.display = 'block';
+        if (orderStats) orderStats.style.display = 'none';
+        return;
+      }
+      
+      // Hide empty state, show stats
+      if (ordersEmptyState) ordersEmptyState.style.display = 'none';
+      if (orderStats) orderStats.style.display = 'block';
+      
+      // Parse orders
+      const orders = [];
+      querySnapshot.forEach((doc) => {
+        orders.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      // Store in global variable
+      window.allOrders = orders;
+      window.filteredOrders = orders;
+      
+      // Update statistics
+      updateOrderStatistics(orders);
+      
+      // Render orders
+      renderOrdersList(orders);
+      
+      console.log('✅ Orders loaded and rendered');
+      
+    } catch (error) {
+      console.error('❌ Error loading orders:', error);
+      ordersListContainer.innerHTML = `
+        <div class="alert alert-danger">
+          <i class="bi bi-exclamation-triangle"></i> 
+          <strong>Error loading orders:</strong> ${error.message}
+        </div>
+      `;
+    }
+  }
+  
+  // Make it global
+  window.loadOrdersDirectly = loadOrdersDirectly;
+
+  /**
+ * Update Order Statistics
+ */
+function updateOrderStatistics(orders) {
+    const totalOrders = orders.length;
+    const pendingOrders = orders.filter(o => o.status === 'pending').length;
+    const deliveredOrders = orders.filter(o => o.status === 'delivered').length;
+    const totalSpent = orders.reduce((sum, o) => sum + (o.totalAmount || 0), 0);
+    
+    // Update DOM
+    const totalOrdersCount = document.getElementById('totalOrdersCount');
+    const pendingOrdersCount = document.getElementById('pendingOrdersCount');
+    const deliveredOrdersCount = document.getElementById('deliveredOrdersCount');
+    const totalSpentAmount = document.getElementById('totalSpentAmount');
+    
+    if (totalOrdersCount) totalOrdersCount.textContent = totalOrders;
+    if (pendingOrdersCount) pendingOrdersCount.textContent = pendingOrders;
+    if (deliveredOrdersCount) deliveredOrdersCount.textContent = deliveredOrders;
+    if (totalSpentAmount) totalSpentAmount.textContent = `₹${totalSpent.toFixed(2)}`;
+    
+    console.log('📊 Statistics updated:', { totalOrders, pendingOrders, deliveredOrders, totalSpent });
+  }
+  
+  /**
+   * Render Orders List
+   */
+  function renderOrdersList(orders) {
+    const container = document.getElementById('ordersListContainer');
+    if (!container) return;
+    
+    if (orders.length === 0) {
+      container.innerHTML = `
+        <div class="alert alert-info">
+          <i class="bi bi-info-circle"></i> No orders match your filters.
+        </div>
+      `;
+      return;
+    }
+    
+    let html = '';
+    
+    orders.forEach(order => {
+      const statusColor = getOrderStatusColor(order.status);
+      const statusText = getOrderStatusText(order.status);
+      const orderDate = order.createdAt ? new Date(order.createdAt).toLocaleDateString('en-IN') : 'N/A';
+      const orderTime = order.createdAt ? new Date(order.createdAt).toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' }) : '';
+      
+      html += `
+        <div class="card mb-3" style="border-radius: 12px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden;">
+          <div class="card-body">
+            
+            <!-- Order Header -->
+            <div class="d-flex justify-content-between align-items-start mb-3">
+              <div>
+                <h6 style="font-weight: 700; margin: 0; color: #333;">
+                  <i class="bi bi-receipt"></i> Order #${order.id.slice(-8)}
+                </h6>
+                <small class="text-muted">
+                  <i class="bi bi-calendar"></i> ${orderDate} ${orderTime}
+                </small>
+              </div>
+              <span class="badge" style="background: ${statusColor}; font-size: 0.85rem; padding: 6px 12px;">
+                ${statusText}
+              </span>
+            </div>
+            
+            <!-- Shop Info -->
+            <div class="mb-3">
+              <p style="margin: 0; font-size: 0.9rem;">
+                <i class="bi bi-shop"></i> <strong>${escapeHtml(order.shopName || 'Shop')}</strong>
+              </p>
+            </div>
+            
+            <!-- Items Preview -->
+            <div class="mb-3">
+              <small class="text-muted">Items (${order.items ? order.items.length : 0}):</small>
+              <p style="margin: 5px 0 0 0; font-size: 0.9rem; color: #666;">
+                ${order.items ? order.items.slice(0, 2).map(item => item.name).join(', ') : 'No items'}
+                ${order.items && order.items.length > 2 ? ` +${order.items.length - 2} more` : ''}
+              </p>
+            </div>
+            
+            <!-- Total Amount -->
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size: 1.2rem; font-weight: 700; color: #25D366;">
+                ₹${(order.totalAmount || 0).toFixed(2)}
+              </span>
+              <button class="btn btn-sm btn-outline-primary" onclick="viewOrderDetails('${order.id}')" style="border-radius: 8px;">
+                View Details
+              </button>
+            </div>
+            
+          </div>
+        </div>
+      `;
+    });
+    
+    container.innerHTML = html;
+    console.log('✅ Rendered', orders.length, 'orders');
+  }
+  
+  /**
+   * Get Order Status Color
+   */
+  function getOrderStatusColor(status) {
+    switch (status) {
+      case 'pending': return '#ffc107';
+      case 'accepted': return '#17a2b8';
+      case 'delivered': return '#28a745';
+      case 'cancelled': return '#dc3545';
+      default: return '#6c757d';
+    }
+  }
+  
+  /**
+   * Get Order Status Text
+   */
+  function getOrderStatusText(status) {
+    switch (status) {
+      case 'pending': return 'Pending';
+      case 'accepted': return 'Accepted';
+      case 'delivered': return 'Delivered';
+      case 'cancelled': return 'Cancelled';
+      default: return 'Unknown';
+    }
+  }
+  
+  /**
+   * View Order Details (Placeholder)
+   */
+  function viewOrderDetails(orderId) {
+    console.log('👀 Viewing order details:', orderId);
+    
+    const order = window.allOrders ? window.allOrders.find(o => o.id === orderId) : null;
+    
+    if (!order) {
+      alert('Order not found!');
+      return;
+    }
+    
+    // For now, just show an alert with order details
+    alert(`Order Details\n\nOrder ID: ${orderId}\nShop: ${order.shopName}\nItems: ${order.items ? order.items.length : 0}\nTotal: ₹${order.totalAmount}\nStatus: ${order.status}`);
+    
+    // TODO: Implement proper order details modal
+  }
+  
+  // Make functions global
+  window.updateOrderStatistics = updateOrderStatistics;
+  window.renderOrdersList = renderOrdersList;
+  window.getOrderStatusColor = getOrderStatusColor;
+  window.getOrderStatusText = getOrderStatusText;
+  window.viewOrderDetails = viewOrderDetails;
+  
+  console.log('✅ Orders display functions loaded');
+  
+
+
+/**
+ * Update Mobile Cart Badge
+ */
+function updateMobileCartBadge() {
+  const badge = document.getElementById('mobileCartBadge');
+  if (!badge) return;
+  
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  
+  if (totalItems > 0) {
+    badge.textContent = totalItems > 99 ? '99+' : totalItems;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/**
+ * Show Settings Coming Soon Alert
+ */
+function showSettingsComingSoon() {
+  alert('⚙️ Settings\n\nSettings page is coming soon!\n\nStay tuned for:\n- Profile management\n- Delivery addresses\n- Notification preferences\n- App settings');
+  
+  // Go back to home
+  switchMobileTab('home');
+}
+
+/**
+ * Handle Window Resize (Show/Hide Bottom Nav)
+ */
+function handleMobileNavResize() {
+  if (!window.currentUser || window.currentUser.role !== 'customer') {
+    hideMobileBottomNav();
+    return;
+  }
+  
+  if (isMobileDevice()) {
+    showMobileBottomNav();
+  } else {
+    hideMobileBottomNav();
+  }
+}
+
+// Add resize listener
+window.addEventListener('resize', handleMobileNavResize);
+
+// Make functions global
+window.initializeMobileBottomNav = initializeMobileBottomNav;
+window.showMobileBottomNav = showMobileBottomNav;
+window.hideMobileBottomNav = hideMobileBottomNav;
+window.switchMobileTab = switchMobileTab;
+window.updateMobileCartBadge = updateMobileCartBadge;
+window.isMobileDevice = isMobileDevice;
+
+console.log('✅ Mobile bottom navigation system loaded');
