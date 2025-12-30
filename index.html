@@ -1218,13 +1218,16 @@ style="border-radius: 10px; font-weight: 700; padding: 15px; font-size: 1.1rem;"
      ============================================ -->
      <div class="page-view" id="ordersReceivedPage" style="display: none;">
   
-      <!-- Header -->
-      <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 20px; text-align: center;">
-        <h3 style="margin: 0; font-weight: 700;">
-          <i class="bi bi-inbox-fill me-2"></i>Orders Received
-        </h3>
-        <p style="margin: 5px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Manage customer orders</p>
-      </div>
+      <!-- Header with Back Button -->
+  <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+    <button class="back-btn" onclick="goBackFromShopOrders()" style="background: rgba(255,255,255,0.2); border: none; color: white; border-radius: 8px; padding: 8px 15px; font-size: 0.9rem; cursor: pointer; display: flex; align-items: center; gap: 5px;">
+      <i class="bi bi-arrow-left"></i> Back
+    </button>
+    <h3 style="margin: 0; font-weight: 700;">
+      <i class="bi bi-inbox-fill me-2"></i>Orders Received
+    </h3>
+    <div style="width: 60px;"></div> <!-- Spacer for alignment -->
+  </div>
       
       <!-- Order Stats -->
       <div class="container-fluid" style="padding: 15px;">
@@ -4492,14 +4495,13 @@ function switchMobileTab(tabName, updateHistory = true) {
   
   console.log('✅ Switched to customer tab:', tabName);
 }
-
 /**
- * Switch Shopowner Mobile Tab (NEW)
+ * Switch Shopowner Mobile Tab (UPDATED)
  */
-function switchShopownerMobileTab(tabName, updateHistory = true) {
+ function switchShopownerMobileTab(tabName, updateHistory = true) {
   console.log('🔄 Switching to shopowner tab:', tabName);
   
-  // Update active tab
+  // Update active tab in bottom nav
   const allTabs = document.querySelectorAll('#mobileBottomNavShopowner .nav-tab');
   allTabs.forEach(tab => {
     if (tab.dataset.tab === tabName) {
@@ -4517,6 +4519,7 @@ function switchShopownerMobileTab(tabName, updateHistory = true) {
     case 'home':
       console.log('📱 Showing home page (shopowner)');
       showPage('mainApp');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       break;
       
     case 'orders-received':
@@ -4525,16 +4528,17 @@ function switchShopownerMobileTab(tabName, updateHistory = true) {
       setTimeout(() => {
         loadShopOrders();
       }, 100);
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       break;
       
     case 'settings':
       console.log('📱 Showing settings page (shopowner)');
       showPage('mobileSettingsPage');
+      window.scrollTo({ top: 0, behavior: 'smooth' });
       break;
   }
   
   currentMobileTab = tabName;
-  window.scrollTo({ top: 0, behavior: 'smooth' });
   
   if (updateHistory) {
     window.location.hash = '#mobile-shopowner-' + tabName;
@@ -4544,16 +4548,16 @@ function switchShopownerMobileTab(tabName, updateHistory = true) {
 }
 
 /**
- * Hide All Pages (Helper)
+ * Hide All Pages (Helper) - UPDATED
  */
-function hideAllPages() {
+ function hideAllPages() {
   const pages = [
     'mainApp', 
     'cartPage', 
     'myOrdersPage', 
     'shopProductsPage', 
     'mobileSettingsPage',
-    'ordersReceivedPage'
+    'ordersReceivedPage'  // ✅ Make sure this is included
   ];
   
   pages.forEach(pageId => {
@@ -4563,7 +4567,10 @@ function hideAllPages() {
       page.classList.remove('active');
     }
   });
+  
+  console.log('✅ All pages hidden');
 }
+
 
 /**
  * Show Page (Helper)
@@ -6097,6 +6104,28 @@ window.markNotDelivered = markNotDelivered;
 
 console.log('✅ Reject order functions loaded');
 
+/**
+ * Go Back from Shop Orders (Shopowner)
+ */
+ function goBackFromShopOrders() {
+  console.log('⬅️ Going back from shop orders page');
+  
+  // If on mobile, switch to home tab
+  if (isMobileDevice()) {
+    switchShopownerMobileTab('home');
+  } else {
+    // Desktop: Hide orders page, show main app
+    hideAllPages();
+    showPage('mainApp');
+  }
+  
+  console.log('✅ Navigated back to home');
+}
+
+// Make it global
+window.goBackFromShopOrders = goBackFromShopOrders;
+
+console.log('✅ Shop orders navigation functions loaded');
 
 
 </script>
