@@ -30,13 +30,17 @@
         signOut
       } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
       import {
-        getFirestore,
-        collection,
-        doc,
-        getDoc,
-        setDoc,
-        serverTimestamp
-      } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+  getFirestore,
+  collection,
+  doc,
+  getDoc,
+  getDocs,
+  setDoc,
+  query,
+  where,
+  serverTimestamp
+} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
 
       // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG
       const firebaseConfig = {
@@ -55,10 +59,11 @@
       window.auth = auth;
       window.db = db;
       window.firebaseImports = {
-        collection, doc, getDoc, setDoc, serverTimestamp,
-        signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
-        onAuthStateChanged, signOut
-      };
+  collection, doc, getDoc, getDocs, setDoc, query, where, serverTimestamp,
+  signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
+  onAuthStateChanged, signOut
+};
+
 
       console.log("✅ Firebase SDK loaded successfully!");
 
@@ -138,10 +143,16 @@ onAuthStateChanged(auth, async (user) => {
       window.isAuthorizedShopowner = isAuthorizedShopowner;
 
       function showApp() {
-        document.getElementById('authScreen').style.display = 'none';
-        document.getElementById('mainApp').style.display = 'block';
-        updateUserInfo();
-      }
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+  updateUserInfo();
+  
+  // ✅ Load shops after showing app
+  setTimeout(() => {
+    loadShopsFromFirestore();
+  }, 500);
+}
+
 
       function showAuthScreen() {
         document.getElementById('authScreen').style.display = 'block';
@@ -217,6 +228,32 @@ onAuthStateChanged(auth, async (user) => {
       userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${roleColor} border-radius: 10px;`);
     }
     
+    // ✅ NEW: Show/Hide Register Shop Button based on role
+    const registerShopBtn = document.getElementById('registerShopBtn');
+    const registerShopBtnMobile = document.getElementById('registerShopBtnMobile');
+    
+    if (role === 'shopowner') {
+      // Show Register Shop button for shopowners
+      if (registerShopBtn) {
+        registerShopBtn.classList.remove('d-none');
+        registerShopBtn.style.display = 'block';
+      }
+      if (registerShopBtnMobile) {
+        registerShopBtnMobile.style.display = 'block';
+      }
+      console.log('✅ Register Shop button shown (Shopowner)');
+    } else {
+      // Hide for customers and guests
+      if (registerShopBtn) {
+        registerShopBtn.classList.add('d-none');
+        registerShopBtn.style.display = 'none';
+      }
+      if (registerShopBtnMobile) {
+        registerShopBtnMobile.style.display = 'none';
+      }
+      console.log('ℹ️ Register Shop button hidden (Customer/Guest)');
+    }
+    
   } else {
     // Guest mode
     if (userName) userName.textContent = 'Guest User';
@@ -247,8 +284,21 @@ onAuthStateChanged(auth, async (user) => {
       userRoleMobile.textContent = '👤';
       userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${guestStyle}`);
     }
+    
+    // ✅ NEW: Hide Register Shop button for guests
+    const registerShopBtn = document.getElementById('registerShopBtn');
+    const registerShopBtnMobile = document.getElementById('registerShopBtnMobile');
+    
+    if (registerShopBtn) {
+      registerShopBtn.classList.add('d-none');
+      registerShopBtn.style.display = 'none';
+    }
+    if (registerShopBtnMobile) {
+      registerShopBtnMobile.style.display = 'none';
+    }
   }
 }
+
 
     </script>
 
@@ -469,145 +519,276 @@ onAuthStateChanged(auth, async (user) => {
     </div>
     
   </nav>
-<!-- ✅ NAVBAR - Professional with User Dropdown + Role Badge -->
+
+
+  <!-- ✅ NAVBAR - Professional with User Dropdown + Register Shop Button -->
 <nav id="mainNavbar" class="navbar navbar-dark sticky-top" 
-     style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 12px 0; padding-left: 70px;">
-  <div class="container-fluid">
-    <div class="w-100">
-      
-      <!-- Row 1: App Name + User Dropdown -->
-      <div class="d-flex align-items-center justify-content-between">
-        <!-- App Name -->
-        <span class="navbar-brand mb-0 h1 d-flex align-items-center" style="margin: 0; font-size: 1.3rem;">
-          <i class="bi bi-shop me-2" style="font-size: 1.5rem;"></i>
-          <span>UE2 Shop</span>
-        </span>
-        
-        <!-- Desktop: User Dropdown with Role Badge -->
-        <div class="dropdown d-none d-md-block">
-          <button class="btn text-white d-flex align-items-center" 
-                  type="button" 
-                  id="userDropdown" 
-                  data-bs-toggle="dropdown" 
-                  aria-expanded="false"
-                  style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; font-weight: 600; padding: 8px 16px;">
-            <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
-            <div class="d-flex flex-column align-items-start me-2">
-              <span id="userName" style="font-size: 0.9rem;">Loading...</span>
-              <span id="userRole" class="badge" style="font-size: 0.65rem; padding: 2px 8px; margin-top: 2px;">Guest</span>
-            </div>
-            <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
-          </button>
-          
-          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="border-radius: 10px; min-width: 250px; border: none;">
-            <li>
-              <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
-                <div class="d-flex align-items-center">
-                  <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
-                  <div style="flex: 1;">
-                    <strong id="userEmailDropdown" style="font-size: 0.85rem; display: block;">user@example.com</strong>
-                    <span id="userRoleDropdown" class="badge mt-1" style="font-size: 0.7rem;">Guest</span>
-                  </div>
-                </div>
-              </div>
-            </li>
-            <li><hr class="dropdown-divider" style="margin: 0;"></li>
-            
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
-                <i class="bi bi-bag me-2" style="color: #25D366;"></i>
-                <span style="font-weight: 500;">My Orders</span>
-              </a>
-            </li>
-            
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
-                <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
-                <span style="font-weight: 500;">Favorites</span>
-              </a>
-            </li>
-            
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
-                <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
-                <span style="font-weight: 500;">Delivery Address</span>
-              </a>
-            </li>
-            
-            <li><hr class="dropdown-divider" style="margin: 0;"></li>
-            
-            <li>
-              <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
-                <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
-                <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-        
-        <!-- Mobile: User Icon Button with Badge -->
-        <div class="dropdown d-md-none">
-          <button class="btn text-white position-relative" 
-                  type="button" 
-                  data-bs-toggle="dropdown" 
-                  aria-expanded="false"
-                  style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; padding: 8px 12px;">
-            <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
-            <span id="userRoleMobile" class="badge position-absolute" style="top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px;">Guest</span>
-          </button>
-          
-          <!-- Mobile Dropdown Menu (same as desktop) -->
-          <ul class="dropdown-menu dropdown-menu-end shadow" style="border-radius: 10px; min-width: 250px; border: none;">
-            <li>
-              <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
-                <div class="d-flex align-items-center">
-                  <img id="userAvatarMobile" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
-                  <div style="flex: 1;">
-                    <strong id="userEmailMobile" style="font-size: 0.85rem; display: block;">user@example.com</strong>
-                    <span id="userRoleDropdownMobile" class="badge mt-1" style="font-size: 0.7rem;">Guest</span>
-                  </div>
-                </div>
-              </div>
-            </li>
-            <li><hr class="dropdown-divider" style="margin: 0;"></li>
-            
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
-                <i class="bi bi-bag me-2" style="color: #25D366;"></i>
-                <span style="font-weight: 500;">My Orders</span>
-              </a>
-            </li>
-            
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
-                <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
-                <span style="font-weight: 500;">Favorites</span>
-              </a>
-            </li>
-            
-            <li>
-              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
-                <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
-                <span style="font-weight: 500;">Delivery Address</span>
-              </a>
-            </li>
-            
-            <li><hr class="dropdown-divider" style="margin: 0;"></li>
-            
-            <li>
-              <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
-                <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
-                <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
-              </button>
-            </li>
-          </ul>
-        </div>
-        
-      </div>
-      
-    </div>
-  </div>
+style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 12px 0; padding-left: 70px;">
+<div class="container-fluid">
+<div class="w-100">
+ 
+ <!-- Row 1: App Name + Buttons -->
+ <div class="d-flex align-items-center justify-content-between">
+   <!-- App Name -->
+   <span class="navbar-brand mb-0 h1 d-flex align-items-center" style="margin: 0; font-size: 1.3rem;">
+     <i class="bi bi-shop me-2" style="font-size: 1.5rem;"></i>
+     <span>UE2 Shop</span>
+   </span>
+   
+   <!-- Right Side: Register Shop Button + User Dropdown -->
+   <div class="d-flex align-items-center gap-3">
+     
+     <!-- ✅ NEW: Register Shop Button (Shopowners Only) -->
+     <button 
+       id="registerShopBtn" 
+       class="btn btn-light d-none" 
+       onclick="openRegisterShopModal()" 
+       style="border-radius: 10px; font-weight: 600; padding: 8px 16px; display: none;">
+       <i class="bi bi-shop me-2"></i>Register Shop
+     </button>
+     
+     <!-- Desktop: User Dropdown with Role Badge -->
+     <div class="dropdown d-none d-md-block">
+       <button class="btn text-white d-flex align-items-center" 
+               type="button" 
+               id="userDropdown" 
+               data-bs-toggle="dropdown" 
+               aria-expanded="false"
+               style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; font-weight: 600; padding: 8px 16px;">
+         <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
+         <div class="d-flex flex-column align-items-start me-2">
+           <span id="userName" style="font-size: 0.9rem;">Loading...</span>
+           <span id="userRole" class="badge" style="font-size: 0.65rem; padding: 2px 8px; margin-top: 2px;">Guest</span>
+         </div>
+         <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+       </button>
+       
+       <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="border-radius: 10px; min-width: 250px; border: none;">
+         <li>
+           <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
+             <div class="d-flex align-items-center">
+               <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+               <div style="flex: 1;">
+                 <strong id="userEmailDropdown" style="font-size: 0.85rem; display: block;">user@example.com</strong>
+                 <span id="userRoleDropdown" class="badge mt-1" style="font-size: 0.7rem;">Guest</span>
+               </div>
+             </div>
+           </div>
+         </li>
+         <li><hr class="dropdown-divider" style="margin: 0;"></li>
+         
+         <li>
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
+             <i class="bi bi-bag me-2" style="color: #25D366;"></i>
+             <span style="font-weight: 500;">My Orders</span>
+           </a>
+         </li>
+         
+         <li>
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
+             <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
+             <span style="font-weight: 500;">Favorites</span>
+           </a>
+         </li>
+         
+         <li>
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
+             <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
+             <span style="font-weight: 500;">Delivery Address</span>
+           </a>
+         </li>
+         
+         <li><hr class="dropdown-divider" style="margin: 0;"></li>
+         
+         <li>
+           <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+             <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
+             <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
+           </button>
+         </li>
+       </ul>
+     </div>
+     
+     <!-- Mobile: User Icon Button with Badge -->
+     <div class="dropdown d-md-none">
+       <button class="btn text-white position-relative" 
+               type="button" 
+               data-bs-toggle="dropdown" 
+               aria-expanded="false"
+               style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; padding: 8px 12px;">
+         <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
+         <span id="userRoleMobile" class="badge position-absolute" style="top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px;">Guest</span>
+       </button>
+       
+       <ul class="dropdown-menu dropdown-menu-end shadow" style="border-radius: 10px; min-width: 250px; border: none;">
+         <li>
+           <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
+             <div class="d-flex align-items-center">
+               <img id="userAvatarMobile" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+               <div style="flex: 1;">
+                 <strong id="userEmailMobile" style="font-size: 0.85rem; display: block;">user@example.com</strong>
+                 <span id="userRoleDropdownMobile" class="badge mt-1" style="font-size: 0.7rem;">Guest</span>
+               </div>
+             </div>
+           </div>
+         </li>
+         <li><hr class="dropdown-divider" style="margin: 0;"></li>
+         
+         <!-- ✅ NEW: Mobile Register Shop Button -->
+         <li id="registerShopBtnMobile" style="display: none;">
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="openRegisterShopModal(); return false;" style="padding: 12px 16px; background: rgba(37, 211, 102, 0.1);">
+             <i class="bi bi-shop me-2" style="color: #25D366;"></i>
+             <span style="font-weight: 600; color: #128C7E;">Register Shop</span>
+           </a>
+           <hr class="dropdown-divider" style="margin: 0;">
+         </li>
+         
+         <li>
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
+             <i class="bi bi-bag me-2" style="color: #25D366;"></i>
+             <span style="font-weight: 500;">My Orders</span>
+           </a>
+         </li>
+         
+         <li>
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
+             <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
+             <span style="font-weight: 500;">Favorites</span>
+           </a>
+         </li>
+         
+         <li>
+           <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
+             <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
+             <span style="font-weight: 500;">Delivery Address</span>
+           </a>
+         </li>
+         
+         <li><hr class="dropdown-divider" style="margin: 0;"></li>
+         
+         <li>
+           <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+             <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
+             <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
+           </button>
+         </li>
+       </ul>
+     </div>
+     
+   </div>
+   
+ </div>
+ 
+</div>
+</div>
 </nav>
+
+<!-- ✅ Sync Indicator -->
+<div id="syncIndicator" class="sync-indicator" style="display: none;">
+<i class="bi bi-arrow-repeat"></i> 
+<span id="syncText">Syncing...</span>
+</div>
+
+
+<!-- ============================================
+     REGISTER SHOP MODAL
+     ============================================ -->
+     <div class="modal fade" id="registerShopModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
+          
+          <!-- Modal Header -->
+          <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
+            <h5 class="modal-title" style="font-weight: 700;">
+              <i class="bi bi-shop me-2"></i>Register Your Shop
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          
+          <!-- Modal Body -->
+          <div class="modal-body p-4">
+            <form id="registerShopForm">
+              
+              <!-- Shop Name -->
+              <div class="mb-3">
+                <label for="shopName" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-shop me-2" style="color: #25D366;"></i>Shop Name <span style="color: red;">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="shopName" 
+                  placeholder="e.g., ABC Tiles & Sanitaryware"
+                  required
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+              <!-- Owner Name -->
+              <div class="mb-3">
+                <label for="ownerName" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-person me-2" style="color: #128C7E;"></i>Owner Name <span style="color: red;">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="ownerName" 
+                  placeholder="e.g., Rajesh Kumar"
+                  required
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+              <!-- Mobile Number -->
+              <div class="mb-3">
+                <label for="shopMobile" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-phone me-2" style="color: #0d6efd;"></i>Mobile Number <span style="color: red;">*</span>
+                </label>
+                <input 
+                  type="tel" 
+                  class="form-control form-control-lg" 
+                  id="shopMobile" 
+                  placeholder="e.g., 9876543210"
+                  required
+                  pattern="[0-9]{10}"
+                  maxlength="10"
+                  style="border-radius: 10px;"
+                >
+                <small class="text-muted">Enter 10-digit mobile number</small>
+              </div>
+              
+              <!-- Address -->
+              <div class="mb-3">
+                <label for="shopAddress" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-geo-alt me-2" style="color: #dc3545;"></i>Shop Address <span style="color: red;">*</span>
+                </label>
+                <textarea 
+                  class="form-control" 
+                  id="shopAddress" 
+                  rows="3" 
+                  placeholder="e.g., Shop No. 45, Urban Estate 2, Hisar"
+                  required
+                  style="border-radius: 10px;"
+                ></textarea>
+              </div>
+              
+            </form>
+          </div>
+          
+          <!-- Modal Footer -->
+          <div class="modal-footer" style="border: none; padding: 20px;">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px; padding: 10px 24px;">
+              <i class="bi bi-x-circle me-2"></i>Cancel
+            </button>
+            <button type="button" class="btn" onclick="handleRegisterShop()" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none; border-radius: 10px; padding: 10px 24px; font-weight: 600;">
+              <i class="bi bi-check-circle me-2"></i>Register Shop
+            </button>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
 
 
   <!-- Main Content -->
@@ -1109,6 +1290,325 @@ document.addEventListener('keydown', function(event) {
     closeSidebar();
   }
 });
+
+/**
+ * ==========================================
+ * SHOP REGISTRATION FUNCTIONS
+ * ==========================================
+ */
+
+// Global variable to store shops
+let cachedShops = [];
+
+/**
+ * Open Register Shop Modal
+ */
+function openRegisterShopModal() {
+  // Check if user is shopowner
+  if (!window.currentUser || window.currentUser.role !== 'shopowner') {
+    alert('⚠️ Only shopowners can register shops.\n\nPlease sign in with authorized email.');
+    return;
+  }
+  
+  // Open modal
+  const modal = new bootstrap.Modal(document.getElementById('registerShopModal'));
+  modal.show();
+  
+  // Clear form
+  document.getElementById('registerShopForm').reset();
+}
+
+/**
+ * Handle Shop Registration
+ */
+async function handleRegisterShop() {
+  const shopName = document.getElementById('shopName').value.trim();
+  const ownerName = document.getElementById('ownerName').value.trim();
+  const shopMobile = document.getElementById('shopMobile').value.trim();
+  const shopAddress = document.getElementById('shopAddress').value.trim();
+  
+  // Validation
+  if (!shopName || !ownerName || !shopMobile || !shopAddress) {
+    alert('❌ Please fill all required fields');
+    return;
+  }
+  
+  // Validate mobile number
+  if (!/^[0-9]{10}$/.test(shopMobile)) {
+    alert('❌ Please enter a valid 10-digit mobile number');
+    return;
+  }
+  
+  // Check if user is authenticated
+  if (!window.currentUser || !window.currentUser.uid) {
+    alert('❌ You must be signed in to register a shop');
+    return;
+  }
+  
+  // Show loading
+  showSyncIndicator('Registering shop...', null);
+  
+  try {
+    console.log('🏪 Registering shop:', shopName);
+    
+    const { collection, doc, setDoc } = window.firebaseImports;
+    
+    // Create shop document
+    const shopData = {
+      shopName: shopName,
+      ownerName: ownerName,
+      mobile: shopMobile,
+      address: shopAddress,
+      ownerId: window.currentUser.uid,
+      ownerEmail: window.currentUser.email,
+      status: 'active',
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Save to Firestore: shops/{shopId}
+    const shopId = 'shop_' + Date.now();
+    const shopRef = doc(window.db, 'shops', shopId);
+    await setDoc(shopRef, shopData);
+    
+    console.log('✅ Shop registered successfully!');
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('registerShopModal'));
+    modal.hide();
+    
+    // Show success message
+    showSyncIndicator('Shop registered successfully!', 2000);
+    
+    // Reload shops
+    await loadShopsFromFirestore();
+    
+    // Show success alert
+    setTimeout(() => {
+      alert('✅ Shop Registered Successfully!\n\n' +
+            'Shop Name: ' + shopName + '\n' +
+            'Owner: ' + ownerName + '\n\n' +
+            'Your shop is now visible on the homepage!');
+    }, 500);
+    
+  } catch (error) {
+    console.error('❌ Error registering shop:', error);
+    showSyncIndicator('Registration failed', 1500);
+    alert('❌ Failed to register shop: ' + error.message + '\n\nPlease try again.');
+  }
+}
+
+/**
+ * Load Shops from Firestore
+ */
+async function loadShopsFromFirestore() {
+  try {
+    console.log('🔄 Loading shops from Firestore...');
+    
+    const { collection, getDocs, query, where } = window.firebaseImports;
+    
+    // Load all active shops
+    const shopsRef = collection(window.db, 'shops');
+    const shopsQuery = query(shopsRef, where('status', '==', 'active'));
+    const shopsSnap = await getDocs(shopsQuery);
+    
+    cachedShops = [];
+    shopsSnap.forEach((doc) => {
+      cachedShops.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    console.log(`✅ Loaded ${cachedShops.length} shops`);
+    
+    // Save to cache
+    localStorage.setItem('ue2shop_shops_cache', JSON.stringify(cachedShops));
+    
+    // Render shops on homepage
+    renderShopsOnHomepage();
+    
+  } catch (error) {
+    console.error('❌ Error loading shops:', error);
+    
+    // Load from cache
+    try {
+      cachedShops = JSON.parse(localStorage.getItem('ue2shop_shops_cache') || '[]');
+      renderShopsOnHomepage();
+    } catch (e) {
+      console.error('Failed to load from cache:', e);
+    }
+  }
+}
+
+/**
+ * Render Shops on Homepage
+ */
+function renderShopsOnHomepage() {
+  // Find the container (after featured products section)
+  const mainContent = document.querySelector('.main-content .container');
+  
+  if (!mainContent) {
+    console.warn('⚠️ Main content container not found');
+    return;
+  }
+  
+  // Remove existing shops section if any
+  const existingSection = document.getElementById('shopsSection');
+  if (existingSection) {
+    existingSection.remove();
+  }
+  
+  // Create shops section
+  const shopsHTML = `
+    <div id="shopsSection" class="mb-4">
+      <div class="d-flex justify-content-between align-items-center mb-3">
+        <h3 style="font-weight: 700; color: #333; margin: 0;">
+          <i class="bi bi-shop me-2" style="color: #25D366;"></i>
+          Local Shops in Urban Estate 2
+        </h3>
+        <span class="badge" style="background: #25D366; color: white; font-size: 0.9rem; padding: 6px 12px; border-radius: 10px;">
+          ${cachedShops.length} Shop${cachedShops.length !== 1 ? 's' : ''}
+        </span>
+      </div>
+      
+      <div class="row g-3" id="shopsGrid">
+        ${cachedShops.length === 0 ? `
+          <div class="col-12">
+            <div class="alert alert-info" style="border-radius: 12px; border: none;">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>No shops registered yet.</strong><br>
+              ${window.currentUser && window.currentUser.role === 'shopowner' ? 
+                'Click "Register Shop" button to add your shop!' : 
+                'Be the first to discover local shops here!'}
+            </div>
+          </div>
+        ` : cachedShops.map(shop => `
+          <div class="col-md-6 col-lg-4">
+            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+              
+              <!-- Shop Header -->
+              <div style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 20px; color: white;">
+                <div class="d-flex align-items-start justify-content-between">
+                  <div style="flex: 1;">
+                    <h5 style="font-weight: 700; color: white; margin-bottom: 5px;">
+                      <i class="bi bi-shop me-2"></i>${escapeHtml(shop.shopName)}
+                    </h5>
+                    <p style="font-size: 0.85rem; opacity: 0.9; margin: 0;">
+                      <i class="bi bi-person me-1"></i>${escapeHtml(shop.ownerName)}
+                    </p>
+                  </div>
+                  <span class="badge" style="background: rgba(255,255,255,0.3); color: white; font-size: 0.75rem;">Active</span>
+                </div>
+              </div>
+              
+              <!-- Shop Body -->
+              <div class="card-body">
+                <!-- Mobile -->
+                <div class="d-flex align-items-center mb-2">
+                  <i class="bi bi-phone" style="color: #0d6efd; font-size: 1.2rem; margin-right: 10px;"></i>
+                  <div>
+                    <small class="text-muted" style="font-size: 0.75rem;">Mobile</small>
+                    <p style="margin: 0; font-weight: 600; color: #333;">${escapeHtml(shop.mobile)}</p>
+                  </div>
+                </div>
+                
+                <!-- Address -->
+                <div class="d-flex align-items-start mb-3">
+                  <i class="bi bi-geo-alt-fill" style="color: #dc3545; font-size: 1.2rem; margin-right: 10px;"></i>
+                  <div>
+                    <small class="text-muted" style="font-size: 0.75rem;">Address</small>
+                    <p style="margin: 0; font-size: 0.9rem; color: #666; line-height: 1.4;">${escapeHtml(shop.address)}</p>
+                  </div>
+                </div>
+                
+                <!-- Action Buttons -->
+                <div class="d-flex gap-2">
+                  <button class="btn btn-sm flex-fill" style="background: #25D366; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;">
+                    <i class="bi bi-telephone me-1"></i>Call
+                  </button>
+                  <button class="btn btn-sm flex-fill" style="background: #128C7E; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;">
+                    <i class="bi bi-eye me-1"></i>View Products
+                  </button>
+                </div>
+              </div>
+              
+            </div>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  // Insert before "Featured Products" section
+  const featuredSection = mainContent.querySelector('.mb-4');
+  if (featuredSection) {
+    featuredSection.insertAdjacentHTML('afterend', shopsHTML);
+  } else {
+    mainContent.insertAdjacentHTML('afterbegin', shopsHTML);
+  }
+}
+
+/**
+ * Sync Helper Functions
+ */
+function showSyncIndicator(msg = 'Syncing...', hideAfterMs = null) {
+  const el = document.getElementById('syncIndicator');
+  const textEl = document.getElementById('syncText');
+  
+  if (el && textEl) {
+    textEl.textContent = msg;
+    el.style.display = 'block';
+    
+    if (hideAfterMs) {
+      setTimeout(() => {
+        el.style.display = 'none';
+      }, hideAfterMs);
+    }
+  }
+}
+
+function hideSyncIndicator() {
+  const el = document.getElementById('syncIndicator');
+  if (el) {
+    el.style.display = 'none';
+  }
+}
+
+/**
+ * Escape HTML to prevent XSS
+ */
+function escapeHtml(text) {
+  if (!text) return '';
+  const div = document.createElement('div');
+  div.textContent = text;
+  return div.innerHTML;
+}
+
+/**
+ * Load shops when app initializes
+ * This runs after DOM is loaded and Firebase is ready
+ */
+ window.addEventListener('DOMContentLoaded', function() {
+  console.log('🔄 DOM loaded, waiting for auth...');
+  
+  // Check periodically if user is authenticated
+  const checkAuthInterval = setInterval(() => {
+    if (window.auth && window.auth.currentUser && document.getElementById('mainApp').style.display === 'block') {
+      console.log('✅ User authenticated, loading shops...');
+      loadShopsFromFirestore();
+      clearInterval(checkAuthInterval);
+    }
+  }, 500);
+  
+  // Stop checking after 10 seconds
+  setTimeout(() => {
+    clearInterval(checkAuthInterval);
+  }, 10000);
+});
+
+
+
 
 </script>
 
