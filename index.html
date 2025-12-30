@@ -1,1 +1,949 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Urban Estate 2 Local Shop</title>
+
+    <!-- PWA Meta Tags -->
+    <meta name="theme-color" content="#25D366">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="UE2 Shop">
+
+    <!-- Bootstrap & Icons -->
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css" rel="stylesheet">
+
+    <!-- External CSS -->
+    <link rel="stylesheet" href="styles.css">
+
+    <!-- Firebase SDK -->
+    <script type="module">
+      import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-app.js';
+      import {
+        getAuth,
+        signInWithPopup,
+        signInWithEmailAndPassword,
+        GoogleAuthProvider,
+        onAuthStateChanged,
+        signOut
+      } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
+      import {
+        getFirestore,
+        collection,
+        doc,
+        getDoc,
+        setDoc,
+        serverTimestamp
+      } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+
+      // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG
+      const firebaseConfig = {
+        apiKey: "AIzaSyBLt_z6QrkwXwK2l8tDq-n7choUJ6vUJf0",
+  authDomain: "zepblink-3e1c7.firebaseapp.com",
+  projectId: "zepblink-3e1c7",
+  storageBucket: "zepblink-3e1c7.firebasestorage.app",
+  messagingSenderId: "275105674132",
+  appId: "1:275105674132:web:1e0460f6765a580c461581"
+      };
+
+      const app = initializeApp(firebaseConfig);
+      const auth = getAuth(app);
+      const db = getFirestore(app);
+
+      window.auth = auth;
+      window.db = db;
+      window.firebaseImports = {
+        collection, doc, getDoc, setDoc, serverTimestamp,
+        signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
+        onAuthStateChanged, signOut
+      };
+
+      console.log("✅ Firebase SDK loaded successfully!");
+
+      // Auth State Listener
+      onAuthStateChanged(auth, async (user) => {
+        if (user) {
+          console.log('✅ User signed in:', user.email);
+
+          // Store user info
+          window.currentUser = {
+            email: user.email,
+            uid: user.uid,
+            displayName: user.displayName || user.email.split('@')[0],
+            photoURL: user.photoURL || null
+          };
+
+          // Check if user exists in Firestore
+          try {
+            const userDocRef = doc(db, 'users', user.uid);
+            const userDoc = await getDoc(userDocRef);
+
+            if (!userDoc.exists()) {
+              // Determine role based on email
+              const role = isAuthorizedShopowner(user.email) ? 'shopowner' : 'customer';
+
+              // Create new user document
+              await setDoc(userDocRef, {
+                email: user.email,
+                displayName: user.displayName,
+                photoURL: user.photoURL,
+                location: 'Urban Estate 2, Hisar',
+                role: role,
+                createdAt: serverTimestamp(),
+                lastLogin: serverTimestamp()
+              });
+              console.log('✅ New user created in Firestore with role:', role);
+            } else {
+              // Update last login
+              await setDoc(userDocRef, {
+                lastLogin: serverTimestamp()
+              }, { merge: true });
+              console.log('✅ User login updated');
+            }
+          } catch (error) {
+            console.error('❌ Error saving user data:', error);
+          }
+
+          // Show main app
+          showApp();
+        } else {
+          console.log('❌ No user signed in');
+          window.currentUser = null;
+          showAuthScreen();
+        }
+      });
+
+      // Check if email is authorized shopowner
+      function isAuthorizedShopowner(email) {
+        const authorizedEmails = [
+          'shopowner1@example.com',
+          'shopowner2@example.com',
+          'shopowner3@example.com'
+          // Add more authorized shopowner emails here
+        ];
+        return authorizedEmails.includes(email.toLowerCase());
+      }
+
+      window.isAuthorizedShopowner = isAuthorizedShopowner;
+
+      function showApp() {
+        document.getElementById('authScreen').style.display = 'none';
+        document.getElementById('mainApp').style.display = 'block';
+        updateUserInfo();
+      }
+
+      function showAuthScreen() {
+        document.getElementById('authScreen').style.display = 'block';
+        document.getElementById('mainApp').style.display = 'none';
+      }
+
+      function updateUserInfo() {
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const userAvatar = document.getElementById('userAvatar');
+
+        if (window.currentUser) {
+          if (userName) userName.textContent = window.currentUser.displayName;
+          if (userEmail) userEmail.textContent = window.currentUser.email;
+          if (userAvatar && window.currentUser.photoURL) {
+            userAvatar.src = window.currentUser.photoURL;
+          }
+        } else {
+          // Guest mode
+          if (userName) userName.textContent = 'Guest User';
+          if (userEmail) userEmail.textContent = 'guest@ue2shop.local';
+        }
+      }
+
+      window.updateUserInfo = updateUserInfo;
+    </script>
+
+    <!-- Bootstrap JS -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+</head>
+<body>
+
+<!-- ============================================
+     AUTHENTICATION SCREEN
+     ============================================ -->
+<div id="authScreen" style="display: block;">
+  <div class="auth-container">
+    <div class="auth-card">
+
+      <!-- App Icon & Branding -->
+      <div class="auth-header">
+        <div class="app-icon">
+          <i class="bi bi-shop"></i>
+        </div>
+        <h1 class="app-title">Urban Estate 2</h1>
+        <p class="app-subtitle">Local Shop - Hisar</p>
+        <p class="location-badge">
+          <i class="bi bi-geo-alt-fill"></i> Urban Estate 2, Hisar Only
+        </p>
+      </div>
+
+      <!-- Welcome Message -->
+      <div class="auth-body">
+        <h2 class="welcome-text">Welcome Back!</h2>
+        <p class="welcome-subtext">Order from your favorite local shops in Urban Estate 2</p>
+
+        <!-- Google Sign-In Button (FOR CUSTOMERS) -->
+        <button 
+          onclick="handleGoogleSignIn()" 
+          class="btn-google-signin" 
+          id="googleSignInBtn"
+        >
+          <svg width="20" height="20" viewBox="0 0 18 18" class="google-icon">
+            <path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/>
+            <path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/>
+            <path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/>
+            <path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/>
+          </svg>
+          <span class="btn-text">Continue with Google</span>
+        </button>
+
+        <!-- Divider -->
+        <div class="position-relative my-4">
+          <hr style="border-top: 1px solid #dee2e6;">
+          <span style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 0 15px; color: #6c757d; font-size: 0.875rem;">
+            OR
+          </span>
+        </div>
+
+        <!-- Email/Password Sign-In (FOR AUTHORIZED SHOPOWNERS ONLY) -->
+        <form id="emailAuthForm" onsubmit="handleEmailPasswordAuth(event)">
+          <div class="mb-3">
+            <input 
+              type="email" 
+              id="userEmailInput" 
+              class="form-control form-control-lg" 
+              placeholder="Shopowner Email" 
+              required
+              autocomplete="email"
+              style="border-radius: 10px; text-align: center;"
+            >
+          </div>
+
+          <div class="mb-3 position-relative">
+            <input 
+              type="password" 
+              id="userPasswordInput" 
+              class="form-control form-control-lg" 
+              placeholder="Password" 
+              required
+              autocomplete="current-password"
+              style="border-radius: 10px; text-align: center; padding-right: 45px;"
+            >
+            <button 
+              type="button" 
+              class="btn btn-link position-absolute" 
+              onclick="togglePasswordVisibility()"
+              style="right: 10px; top: 50%; transform: translateY(-50%); text-decoration: none; color: #6c757d;"
+            >
+              <i id="passwordToggleIcon" class="bi bi-eye"></i>
+            </button>
+          </div>
+
+          <button type="submit" id="loginButton" class="btn btn-outline-primary btn-lg w-100" style="border-radius: 10px;">
+            <i class="bi bi-box-arrow-in-right me-2"></i>Sign In with Email
+          </button>
+        </form>
+
+        <p class="text-muted mt-3" style="font-size: 0.8rem; text-align: center;">
+          <i class="bi bi-info-circle"></i> Email sign-in is for authorized shopowners only
+        </p>
+
+        <!-- ✅ NEW: Skip Login Button (Temporary) -->
+        <div class="mt-4 pt-3" style="border-top: 1px solid #dee2e6;">
+          <button onclick="skipLogin()" class="btn btn-sm w-100" style="background: rgba(37, 211, 102, 0.1); color: #128C7E; border: 1px dashed #128C7E; border-radius: 8px; padding: 10px; font-weight: 600;">
+            <i class="bi bi-skip-forward-circle me-2"></i>Skip Login (Temporary - Development)
+          </button>
+        </div>
+
+        <!-- Features -->
+        <div class="auth-features">
+          <div class="feature-item">
+            <i class="bi bi-lightning-charge-fill"></i>
+            <span>Quick Orders</span>
+          </div>
+          <div class="feature-item">
+            <i class="bi bi-truck"></i>
+            <span>Local Delivery</span>
+          </div>
+          <div class="feature-item">
+            <i class="bi bi-shield-check"></i>
+            <span>Secure Payment</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Footer -->
+      <div class="auth-footer">
+        <p class="security-text">
+          <i class="bi bi-shield-lock"></i> 
+          Secured by Firebase Authentication
+        </p>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<!-- ============================================
+     MAIN APP - HOMEPAGE
+     ============================================ -->
+<div id="mainApp" style="display: none;">
+
+  <!-- ============================================
+       HAMBURGER BUTTON & SIDEBAR
+       ============================================ -->
+  <!-- Hamburger Menu Button -->
+  <button class="sidebar-toggle-btn" id="sidebarToggleBtn" onclick="toggleSidebar()">
+    <i class="bi bi-list"></i>
+  </button>
+
+  <!-- Sidebar Overlay -->
+  <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
+
+  <!-- Sidebar Menu -->
+  <nav class="sidebar-menu" id="sidebarMenu">
+    
+    <!-- Sidebar Header -->
+    <div class="sidebar-header">
+      <i class="bi bi-shop" style="font-size: 32px;"></i>
+      <h4 class="mt-2">UE2 Shop Menu</h4>
+    </div>
+    
+    <!-- Home -->
+    <div class="sidebar-item" onclick="goToHome()">
+      <i class="bi bi-house-door"></i>
+      <span>Home</span>
+    </div>
+    
+    <!-- SHOPPING Section -->
+    <div class="sidebar-section-title">SHOPPING</div>
+    
+    <div class="sidebar-item" onclick="navigateTo('categories')">
+      <i class="bi bi-grid-3x3-gap"></i>
+      <span>Shop by Category</span>
+    </div>
+    
+    <div class="sidebar-item" onclick="navigateTo('shops')">
+      <i class="bi bi-shop-window"></i>
+      <span>All Shops</span>
+    </div>
+    
+    <div class="sidebar-item" onclick="navigateTo('deals')">
+      <i class="bi bi-tag-fill"></i>
+      <span>Deals & Offers</span>
+    </div>
+    
+    <!-- MY ACCOUNT Section -->
+    <div class="sidebar-section-title">MY ACCOUNT</div>
+    
+    <div class="sidebar-item" onclick="navigateTo('orders')">
+      <i class="bi bi-bag-check"></i>
+      <span>My Orders</span>
+    </div>
+    
+    <div class="sidebar-item" onclick="navigateTo('cart')">
+      <i class="bi bi-cart3"></i>
+      <span>Shopping Cart</span>
+    </div>
+    
+    <div class="sidebar-item" onclick="navigateTo('favorites')">
+      <i class="bi bi-heart-fill"></i>
+      <span>Favorites</span>
+    </div>
+    
+    <div class="sidebar-item" onclick="navigateTo('address')">
+      <i class="bi bi-geo-alt-fill"></i>
+      <span>Delivery Address</span>
+    </div>
+    
+    <!-- SETTINGS Section -->
+    <div class="sidebar-section-title">SETTINGS</div>
+    
+    <div class="sidebar-item" onclick="navigateTo('profile')">
+      <i class="bi bi-person-circle"></i>
+      <span>Profile Settings</span>
+    </div>
+    
+    <div class="sidebar-item" onclick="navigateTo('help')">
+      <i class="bi bi-question-circle"></i>
+      <span>Help & Support</span>
+    </div>
+    
+  </nav>
+
+  <!-- ✅ NAVBAR - Professional with User Dropdown -->
+  <nav id="mainNavbar" class="navbar navbar-dark sticky-top" 
+       style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 12px 0; padding-left: 70px;">
+    <div class="container-fluid">
+      <div class="w-100">
+        
+        <!-- Row 1: App Name + User Dropdown -->
+        <div class="d-flex align-items-center justify-content-between">
+          <!-- App Name -->
+          <span class="navbar-brand mb-0 h1 d-flex align-items-center" style="margin: 0; font-size: 1.3rem;">
+            <i class="bi bi-shop me-2" style="font-size: 1.5rem;"></i>
+            <span>UE2 Shop</span>
+          </span>
+          
+          <!-- Desktop: User Dropdown -->
+          <div class="dropdown d-none d-md-block">
+            <button class="btn text-white d-flex align-items-center" 
+                    type="button" 
+                    id="userDropdown" 
+                    data-bs-toggle="dropdown" 
+                    aria-expanded="false"
+                    style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; font-weight: 600; padding: 8px 16px;">
+              <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
+              <span id="userName" class="me-2">Loading...</span>
+              <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+            </button>
+            
+            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="border-radius: 10px; min-width: 250px; border: none;">
+              <li>
+                <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
+                  <div class="d-flex align-items-center">
+                    <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+                    <div>
+                      <strong id="userEmail" style="font-size: 0.85rem;">user@example.com</strong>
+                      <div style="font-size: 0.75rem; opacity: 0.9;">Signed In</div>
+                    </div>
+                  </div>
+                </div>
+              </li>
+              <li><hr class="dropdown-divider" style="margin: 0;"></li>
+              
+              <li>
+                <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
+                  <i class="bi bi-bag me-2" style="color: #25D366;"></i>
+                  <span style="font-weight: 500;">My Orders</span>
+                </a>
+              </li>
+              
+              <li>
+                <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
+                  <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
+                  <span style="font-weight: 500;">Favorites</span>
+                </a>
+              </li>
+              
+              <li>
+                <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
+                  <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
+                  <span style="font-weight: 500;">Delivery Address</span>
+                </a>
+              </li>
+              
+              <li><hr class="dropdown-divider" style="margin: 0;"></li>
+              
+              <li>
+                <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+                  <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
+                  <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
+                </button>
+              </li>
+            </ul>
+          </div>
+          
+          <!-- Mobile: User Icon Button -->
+          <button class="btn text-white d-md-none" 
+                  type="button" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                  style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; padding: 8px 12px;">
+            <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
+          </button>
+        </div>
+        
+      </div>
+    </div>
+  </nav>
+
+  <!-- Main Content -->
+  <main class="main-content" style="padding: 20px 0; min-height: calc(100vh - 70px); background: #F8F9F8;">
+    <div class="container">
+
+      <!-- Welcome Banner -->
+      <div class="card mb-4" style="border: none; border-radius: 15px; background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white;">
+        <div class="card-body p-4">
+          <h2 class="mb-2" style="color: white; font-weight: 700;">
+            <i class="bi bi-emoji-smile"></i> Welcome to Urban Estate 2 Shop!
+          </h2>
+          <p class="mb-0" style="opacity: 0.95;">Order from your favorite local shops, delivered to your doorstep.</p>
+        </div>
+      </div>
+
+      <!-- Quick Stats -->
+      <div class="row g-3 mb-4">
+        <div class="col-md-3 col-6">
+          <div class="card text-center" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div class="card-body">
+              <i class="bi bi-shop" style="font-size: 2rem; color: #25D366;"></i>
+              <h3 class="mt-2 mb-0" style="font-size: 1.5rem; font-weight: 700; color: #333;">12</h3>
+              <p class="text-muted mb-0" style="font-size: 0.85rem;">Active Shops</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-6">
+          <div class="card text-center" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div class="card-body">
+              <i class="bi bi-box-seam" style="font-size: 2rem; color: #128C7E;"></i>
+              <h3 class="mt-2 mb-0" style="font-size: 1.5rem; font-weight: 700; color: #333;">450+</h3>
+              <p class="text-muted mb-0" style="font-size: 0.85rem;">Products</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-6">
+          <div class="card text-center" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div class="card-body">
+              <i class="bi bi-truck" style="font-size: 2rem; color: #0d6efd;"></i>
+              <h3 class="mt-2 mb-0" style="font-size: 1.5rem; font-weight: 700; color: #333;">Fast</h3>
+              <p class="text-muted mb-0" style="font-size: 0.85rem;">Delivery</p>
+            </div>
+          </div>
+        </div>
+
+        <div class="col-md-3 col-6">
+          <div class="card text-center" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08);">
+            <div class="card-body">
+              <i class="bi bi-shield-check" style="font-size: 2rem; color: #198754;"></i>
+              <h3 class="mt-2 mb-0" style="font-size: 1.5rem; font-weight: 700; color: #333;">100%</h3>
+              <p class="text-muted mb-0" style="font-size: 0.85rem;">Secure</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Featured Products Section -->
+      <div class="mb-4">
+        <div class="d-flex justify-content-between align-items-center mb-3">
+          <h3 style="font-weight: 700; color: #333; margin: 0;">
+            <i class="bi bi-star-fill me-2" style="color: #ffc107;"></i>
+            Featured Products
+          </h3>
+          <a href="#" class="text-decoration-none" style="color: #25D366; font-weight: 600; font-size: 0.9rem;">
+            View All <i class="bi bi-arrow-right"></i>
+          </a>
+        </div>
+
+        <div class="row g-3">
+          <!-- Product Card 1 -->
+          <div class="col-md-3 col-6">
+            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-box-seam" style="font-size: 3rem; color: #1976d2;"></i>
+              </div>
+              <div class="card-body">
+                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 1</h6>
+                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop A</p>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹299</span>
+                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
+                    <i class="bi bi-cart-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Card 2 -->
+          <div class="col-md-3 col-6">
+            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-basket" style="font-size: 3rem; color: #7b1fa2;"></i>
+              </div>
+              <div class="card-body">
+                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 2</h6>
+                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop B</p>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹499</span>
+                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
+                    <i class="bi bi-cart-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Card 3 -->
+          <div class="col-md-3 col-6">
+            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-bag-heart" style="font-size: 3rem; color: #e65100;"></i>
+              </div>
+              <div class="card-body">
+                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 3</h6>
+                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop C</p>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹199</span>
+                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
+                    <i class="bi bi-cart-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Product Card 4 -->
+          <div class="col-md-3 col-6">
+            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+              <div style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
+                <i class="bi bi-gift" style="font-size: 3rem; color: #2e7d32;"></i>
+              </div>
+              <div class="card-body">
+                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 4</h6>
+                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop D</p>
+                <div class="d-flex justify-content-between align-items-center">
+                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹399</span>
+                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
+                    <i class="bi bi-cart-plus"></i>
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Development Notice -->
+      <div class="alert alert-info mt-4" role="alert" style="border-radius: 12px; border: none;">
+        <i class="bi bi-info-circle me-2"></i>
+        <strong>Under Development:</strong> Product listings from local shopowners will be loaded here. Shopping cart and checkout coming soon!
+      </div>
+
+    </div>
+  </main>
+
+</div>
+
+<!-- ============================================
+     JAVASCRIPT
+     ============================================ -->
+<script>
+/**
+ * ✅ Skip Login Function (Temporary for Development)
+ */
+function skipLogin() {
+  console.log('⏭️ Skipping login - Guest mode');
+
+  // Set temporary guest user
+  window.currentUser = {
+    email: 'guest@ue2shop.local',
+    uid: 'guest_' + Date.now(),
+    displayName: 'Guest User',
+    photoURL: null,
+    isGuest: true
+  };
+
+  // Hide auth screen and show app
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+
+  // Update UI
+  if (typeof window.updateUserInfo === 'function') {
+    window.updateUserInfo();
+  }
+
+  // Show notification
+  setTimeout(() => {
+    alert('⚠️ Guest Mode: You are browsing without authentication.\n\nSign in with Google or Email to place orders.');
+  }, 500);
+}
+
+/**
+ * Handle Google Sign-In (FOR CUSTOMERS)
+ */
+async function handleGoogleSignIn() {
+  const googleSignInBtn = document.getElementById('googleSignInBtn');
+
+  if (googleSignInBtn) {
+    googleSignInBtn.disabled = true;
+    googleSignInBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+  }
+
+  try {
+    console.log('🔐 Starting Google Sign-In...');
+
+    const { signInWithPopup, GoogleAuthProvider } = window.firebaseImports;
+    const provider = new GoogleAuthProvider();
+
+    provider.setCustomParameters({
+      prompt: 'select_account'
+    });
+
+    const result = await signInWithPopup(window.auth, provider);
+    const user = result.user;
+
+    console.log('✅ Google Sign-In successful!', user.email);
+
+  } catch (error) {
+    console.error('❌ Google Sign-In error:', error);
+
+    let errorMessage = 'Google Sign-In failed. Please try again.';
+
+    if (error.code === 'auth/popup-closed-by-user') {
+      errorMessage = 'Sign-in cancelled. Please try again.';
+    } else if (error.code === 'auth/popup-blocked') {
+      errorMessage = 'Pop-up blocked. Please enable pop-ups for this site.';
+    } else if (error.code === 'auth/cancelled-popup-request') {
+      errorMessage = 'Only one sign-in at a time please.';
+    } else if (error.code === 'auth/network-request-failed') {
+      errorMessage = 'Network error. Check your internet connection.';
+    }
+
+    alert(errorMessage);
+
+    if (googleSignInBtn) {
+      googleSignInBtn.disabled = false;
+      googleSignInBtn.innerHTML = '<svg width="20" height="20" viewBox="0 0 18 18" class="google-icon"><path fill="#4285F4" d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844c-.209 1.125-.843 2.078-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.874 2.684-6.615z"/><path fill="#34A853" d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332C2.438 15.983 5.482 18 9 18z"/><path fill="#FBBC05" d="M3.964 10.71c-.18-.54-.282-1.117-.282-1.71s.102-1.17.282-1.71V4.958H.957C.347 6.173 0 7.548 0 9s.348 2.827.957 4.042l3.007-2.332z"/><path fill="#EA4335" d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0 5.482 0 2.438 2.017.957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58z"/></svg><span class="btn-text">Continue with Google</span>';
+    }
+  }
+}
+
+/**
+ * Handle Email/Password Sign-In (FOR AUTHORIZED SHOPOWNERS ONLY)
+ */
+async function handleEmailPasswordAuth(event) {
+  event.preventDefault();
+
+  const emailInput = document.getElementById('userEmailInput');
+  const passwordInput = document.getElementById('userPasswordInput');
+  const loginButton = document.getElementById('loginButton');
+
+  const email = emailInput.value.trim();
+  const password = passwordInput.value;
+
+  if (!window.isAuthorizedShopowner(email)) {
+    alert('❌ Unauthorized! This email is not registered as a shopowner.\n\nCustomers should use Google Sign-In.');
+    return;
+  }
+
+  if (loginButton) {
+    loginButton.disabled = true;
+    loginButton.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Signing in...';
+  }
+
+  try {
+    console.log('🔐 Starting Email/Password Sign-In for:', email);
+
+    const { signInWithEmailAndPassword } = window.firebaseImports;
+    const userCredential = await signInWithEmailAndPassword(window.auth, email, password);
+    const user = userCredential.user;
+
+    console.log('✅ Email/Password Sign-In successful!', user.email);
+
+  } catch (error) {
+    console.error('❌ Email/Password Sign-In error:', error);
+
+    let errorMessage = 'Sign-in failed. Please try again.';
+
+    if (error.code === 'auth/user-not-found') {
+      errorMessage = 'No account found with this email. Please contact admin.';
+    } else if (error.code === 'auth/wrong-password') {
+      errorMessage = 'Incorrect password. Please try again.';
+    } else if (error.code === 'auth/invalid-email') {
+      errorMessage = 'Invalid email format.';
+    } else if (error.code === 'auth/user-disabled') {
+      errorMessage = 'This account has been disabled. Contact admin.';
+    } else if (error.code === 'auth/too-many-requests') {
+      errorMessage = 'Too many failed attempts. Please try again later.';
+    } else if (error.code === 'auth/invalid-credential') {
+      errorMessage = 'Invalid email or password. Please try again.';
+    }
+
+    alert(errorMessage);
+
+    if (loginButton) {
+      loginButton.disabled = false;
+      loginButton.innerHTML = '<i class="bi bi-box-arrow-in-right me-2"></i>Sign In with Email';
+    }
+  }
+}
+
+/**
+ * Toggle Password Visibility
+ */
+function togglePasswordVisibility() {
+  const passwordInput = document.getElementById('userPasswordInput');
+  const toggleIcon = document.getElementById('passwordToggleIcon');
+
+  if (passwordInput.type === 'password') {
+    passwordInput.type = 'text';
+    toggleIcon.classList.remove('bi-eye');
+    toggleIcon.classList.add('bi-eye-slash');
+  } else {
+    passwordInput.type = 'password';
+    toggleIcon.classList.remove('bi-eye-slash');
+    toggleIcon.classList.add('bi-eye');
+  }
+}
+
+/**
+ * Handle Sign Out
+ */
+async function handleSignOut() {
+  if (window.currentUser && window.currentUser.isGuest) {
+    // Guest mode - just reload page
+    if (confirm('Return to login screen?')) {
+      location.reload();
+    }
+    return;
+  }
+
+  if (confirm('Are you sure you want to sign out?')) {
+    try {
+      await window.auth.signOut();
+      console.log('✅ User signed out');
+      location.reload();
+    } catch (error) {
+      console.error('❌ Sign out error:', error);
+      alert('Failed to sign out. Please try again.');
+    }
+  }
+}
+
+/**
+ * ==========================================
+ * SIDEBAR MENU FUNCTIONALITY
+ * ==========================================
+ */
+
+// Current page tracker
+let currentPage = 'home';
+
+/**
+ * Toggle Sidebar
+ */
+function toggleSidebar() {
+  const sidebar = document.getElementById('sidebarMenu');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  if (sidebar.classList.contains('open')) {
+    closeSidebar();
+  } else {
+    sidebar.classList.add('open');
+    overlay.classList.add('show');
+    // Prevent body scroll when sidebar is open
+    document.body.style.overflow = 'hidden';
+  }
+}
+
+/**
+ * Close Sidebar
+ */
+function closeSidebar() {
+  const sidebar = document.getElementById('sidebarMenu');
+  const overlay = document.getElementById('sidebarOverlay');
+  
+  sidebar.classList.remove('open');
+  overlay.classList.remove('show');
+  document.body.style.overflow = '';
+}
+
+/**
+ * Go to Home function
+ */
+function goToHome() {
+  console.log('📍 Going to Home');
+  closeSidebar();
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  // Update active page
+  currentPage = 'home';
+  updateSidebarActive('home');
+}
+
+/**
+ * Navigate to Different Pages
+ */
+function navigateTo(page) {
+  console.log('📍 Navigating to:', page);
+  
+  // Update current page
+  currentPage = page;
+  
+  // Close sidebar
+  closeSidebar();
+  
+  // Update active state
+  updateSidebarActive(page);
+  
+  // Handle navigation based on page
+  const pageNames = {
+    'categories': '📂 Categories',
+    'shops': '🏪 All Shops',
+    'deals': '🏷️ Deals & Offers',
+    'orders': '📦 My Orders',
+    'cart': '🛒 Shopping Cart',
+    'favorites': '❤️ Favorites',
+    'address': '📍 Delivery Address',
+    'profile': '👤 Profile Settings',
+    'help': '❓ Help & Support'
+  };
+  
+  const pageName = pageNames[page] || page;
+  
+  // Show coming soon alert
+  alert(`⏳ "${pageName}" feature coming soon!\n\nThis will be implemented in the next phase.`);
+}
+
+/**
+ * Sidebar Action function (for future use)
+ */
+function sidebarAction(action) {
+  console.log('Sidebar action:', action);
+  
+  // Show coming soon for disabled items
+  const actionName = action.replace(/([A-Z])/g, ' $1').trim();
+  alert(`⏳ "${actionName}" feature coming soon!\n\nThis will be implemented in the next phase.`);
+  
+  closeSidebar();
+}
+
+/**
+ * Update Active State in Sidebar
+ */
+function updateSidebarActive(page) {
+  // Remove active class from all items
+  const allItems = document.querySelectorAll('.sidebar-item');
+  allItems.forEach(item => {
+    item.classList.remove('active');
+  });
+  
+  console.log('✅ Active page:', page);
+}
+
+/**
+ * Close sidebar on window resize (desktop view)
+ */
+window.addEventListener('resize', function() {
+  if (window.innerWidth > 768) {
+    closeSidebar();
+  }
+});
+
+/**
+ * Close sidebar on Escape key
+ */
+document.addEventListener('keydown', function(event) {
+  if (event.key === 'Escape') {
+    closeSidebar();
+  }
+});
+
+</script>
+
+</body>
+</html>
+
 
