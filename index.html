@@ -791,6 +791,11 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
     
 
 
+    
+    
+
+
+
   <!-- Main Content -->
   <main class="main-content" style="padding: 20px 0; min-height: calc(100vh - 70px); background: #F8F9F8;">
     <div class="container">
@@ -949,6 +954,61 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
   </main>
 
 </div>
+
+<!-- ============================================
+     SHOP PRODUCTS PAGE
+     ============================================ -->
+     <div class="page-view" id="shopProductsPage" style="display: none;">
+  
+      <!-- Header -->
+      <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <button class="btn btn-light" onclick="goBackHome()" style="border-radius: 10px; font-weight: 600;">
+          <i class="bi bi-arrow-left me-2"></i>Back
+        </button>
+        <h3 style="margin: 0; font-weight: 700; flex: 1; text-align: center;">
+          <i class="bi bi-shop me-2"></i><span id="shopProductsPageTitle">Shop Products</span>
+        </h3>
+        <div style="width: 80px;"></div> <!-- Spacer for centering -->
+      </div>
+      
+      <!-- Shop Info Card -->
+      <div class="container-fluid" style="padding: 20px;">
+        <div id="shopInfoCard" class="card mb-4" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden;">
+          <!-- Shop info will be dynamically inserted here -->
+        </div>
+        
+        <!-- Search Box -->
+        <div class="mb-3">
+          <input 
+            type="text" 
+            class="form-control form-control-lg" 
+            id="searchShopProductsInput" 
+            placeholder="🔍 Search products..." 
+            onkeyup="filterShopProducts(this.value)"
+            style="border-radius: 10px; max-width: 600px; margin: 0 auto; display: block;"
+          >
+        </div>
+        
+        <!-- Products Grid -->
+        <div id="shopProductsGrid" class="row g-3">
+          <!-- Products will be rendered here -->
+          <div class="col-12" style="text-align: center; padding: 40px;">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-3">Loading products...</p>
+          </div>
+        </div>
+        
+        <!-- Empty State -->
+        <div id="shopProductsEmptyState" style="display: none; text-align: center; padding: 60px 20px;">
+          <i class="bi bi-box-seam" style="font-size: 64px; color: #ccc;"></i>
+          <h4 style="margin-top: 20px;">No Products Yet</h4>
+          <p class="text-muted">This shop hasn't added any products yet.</p>
+        </div>
+      </div>
+      
+    </div>
+
+
 
 <!-- ============================================
      JAVASCRIPT
@@ -1527,9 +1587,9 @@ function renderShopsOnHomepage() {
                   <button class="btn btn-sm flex-fill" style="background: #25D366; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;">
                     <i class="bi bi-telephone me-1"></i>Call
                   </button>
-                  <button class="btn btn-sm flex-fill" style="background: #128C7E; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;">
-                    <i class="bi bi-eye me-1"></i>View Products
-                  </button>
+                 <button class="btn btn-sm flex-fill" onclick="navigateToShopProducts('${shop.id}', '${escapeHtml(shop.shopName)}')" style="background: #128C7E; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;">
+  <i class="bi bi-eye me-1"></i>View Products
+</button>
                 </div>
               </div>
               
@@ -1548,6 +1608,16 @@ function renderShopsOnHomepage() {
     mainContent.insertAdjacentHTML('afterbegin', shopsHTML);
   }
 }
+
+
+/**
+ * Call Shop
+ */
+ function callShop(mobile) {
+  console.log('📞 Calling:', mobile);
+  window.location.href = 'tel:' + mobile;
+}
+
 
 /**
  * Sync Helper Functions
@@ -1607,6 +1677,314 @@ function escapeHtml(text) {
   }, 10000);
 });
 
+/**
+ * ==========================================
+ * SHOP PRODUCTS PAGE FUNCTIONS
+ * ==========================================
+ */
+
+// Global variables
+let currentShopData = null;
+let allShopProducts = [];
+
+/**
+ * Navigate to Shop Products Page
+ */
+function navigateToShopProducts(shopId, shopName) {
+  console.log('🏪 Navigating to Shop Products:', shopId, shopName);
+  
+  // Store current shop data
+  currentShopData = cachedShops.find(shop => shop.id === shopId);
+  
+  if (!currentShopData) {
+    console.error('❌ Shop not found:', shopId);
+    alert('Shop not found!');
+    return;
+  }
+  
+  // Hide main app and navbar
+  const mainApp = document.getElementById('mainApp');
+  const mainNavbar = document.getElementById('mainNavbar');
+  const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  
+  if (mainApp) {
+    mainApp.style.display = 'none';
+  }
+  
+  if (mainNavbar) {
+    mainNavbar.style.display = 'none';
+  }
+  
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.style.display = 'none';
+  }
+  
+  // Show shop products page
+  const shopProductsPage = document.getElementById('shopProductsPage');
+  if (shopProductsPage) {
+    shopProductsPage.style.display = 'block';
+    shopProductsPage.classList.add('active');
+  }
+  
+  // Update page title
+  const pageTitle = document.getElementById('shopProductsPageTitle');
+  if (pageTitle) {
+    pageTitle.textContent = shopName;
+  }
+  
+  // Render shop info
+  renderShopInfo(currentShopData);
+  
+  // Load shop products
+  loadShopProducts(currentShopData.ownerId);
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  // Update hash
+  window.location.hash = '#shop-products/' + shopId;
+}
+
+/**
+ * Render Shop Info Card
+ */
+function renderShopInfo(shop) {
+  const shopInfoCard = document.getElementById('shopInfoCard');
+  
+  if (!shopInfoCard) return;
+  
+  shopInfoCard.innerHTML = `
+    <div style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 20px; color: white;">
+      <div class="d-flex align-items-start justify-content-between">
+        <div style="flex: 1;">
+          <h4 style="font-weight: 700; color: white; margin-bottom: 8px;">
+            <i class="bi bi-shop me-2"></i>${escapeHtml(shop.shopName)}
+          </h4>
+          <p style="font-size: 0.95rem; opacity: 0.95; margin-bottom: 4px;">
+            <i class="bi bi-person me-2"></i>${escapeHtml(shop.ownerName)}
+          </p>
+          <p style="font-size: 0.9rem; opacity: 0.9; margin: 0;">
+            <i class="bi bi-phone me-2"></i>${escapeHtml(shop.mobile)}
+          </p>
+        </div>
+        <span class="badge" style="background: rgba(255,255,255,0.3); color: white; font-size: 0.85rem; padding: 6px 12px;">Active</span>
+      </div>
+    </div>
+    <div class="card-body">
+      <p style="margin: 0; color: #666;">
+        <i class="bi bi-geo-alt-fill me-2" style="color: #dc3545;"></i>${escapeHtml(shop.address)}
+      </p>
+    </div>
+  `;
+}
+
+/**
+ * Load Shop Products from Firestore
+ */
+async function loadShopProducts(ownerId) {
+  console.log('🔄 Loading products for owner:', ownerId);
+  
+  const productsGrid = document.getElementById('shopProductsGrid');
+  const emptyState = document.getElementById('shopProductsEmptyState');
+  
+  if (!productsGrid) {
+    console.error('❌ Products grid not found');
+    return;
+  }
+  
+  // Show loading
+  productsGrid.innerHTML = `
+    <div class="col-12" style="text-align: center; padding: 40px;">
+      <div class="spinner-border text-success" role="status"></div>
+      <p class="mt-3">Loading products...</p>
+    </div>
+  `;
+  
+  try {
+    const { collection, getDocs, query, where } = window.firebaseImports;
+    
+    // Load products for this shop owner from their tenant collection
+    const productsRef = collection(window.db, 'tenants', ownerId, 'products');
+    const productsSnap = await getDocs(productsRef);
+    
+    allShopProducts = [];
+    productsSnap.forEach((doc) => {
+      allShopProducts.push({
+        id: doc.id,
+        ...doc.data()
+      });
+    });
+    
+    console.log(`✅ Loaded ${allShopProducts.length} products`);
+    
+    // Render products
+    renderShopProducts(allShopProducts);
+    
+  } catch (error) {
+    console.error('❌ Error loading shop products:', error);
+    
+    productsGrid.innerHTML = `
+      <div class="col-12">
+        <div class="alert alert-danger" style="border-radius: 12px;">
+          <i class="bi bi-exclamation-triangle me-2"></i>
+          <strong>Error loading products:</strong> ${error.message}
+        </div>
+      </div>
+    `;
+  }
+}
+
+/**
+ * Render Shop Products
+ */
+function renderShopProducts(products) {
+  const productsGrid = document.getElementById('shopProductsGrid');
+  const emptyState = document.getElementById('shopProductsEmptyState');
+  
+  if (!productsGrid) return;
+  
+  // Clear grid
+  productsGrid.innerHTML = '';
+  
+  if (products.length === 0) {
+    productsGrid.style.display = 'none';
+    if (emptyState) emptyState.style.display = 'block';
+    return;
+  }
+  
+  productsGrid.style.display = 'flex';
+  if (emptyState) emptyState.style.display = 'none';
+  
+  // Render each product
+  products.forEach(product => {
+    const productCard = `
+      <div class="col-md-4 col-sm-6 col-12">
+        <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+          
+          <!-- Product Image/Icon -->
+          <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
+            <i class="bi bi-box-seam" style="font-size: 3rem; color: #1976d2;"></i>
+          </div>
+          
+          <!-- Product Body -->
+          <div class="card-body">
+            <h6 class="mb-2" style="font-weight: 600; color: #333; min-height: 40px;">
+              ${escapeHtml(product.name || 'Unnamed Product')}
+            </h6>
+            
+            <div class="mb-2">
+              ${product.brand ? `<span class="badge" style="background: #e3f2fd; color: #1976d2; font-size: 0.75rem; margin-right: 5px;">${escapeHtml(product.brand)}</span>` : ''}
+              ${product.size ? `<span class="badge" style="background: #f3e5f5; color: #7b1fa2; font-size: 0.75rem;">${escapeHtml(product.size)}</span>` : ''}
+            </div>
+            
+            <div class="d-flex justify-content-between align-items-center mb-2">
+              <span style="font-size: 1.2rem; font-weight: 700; color: #25D366;">
+                ₹${formatPrice(product.price || 0)}
+              </span>
+              <span class="text-muted" style="font-size: 0.85rem;">
+                Stock: ${product.stock || 0}
+              </span>
+            </div>
+            
+            <button class="btn btn-sm w-100" style="background: #25D366; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;" onclick="addToCart('${product.id}')">
+              <i class="bi bi-cart-plus me-1"></i>Add to Cart
+            </button>
+          </div>
+          
+        </div>
+      </div>
+    `;
+    
+    productsGrid.insertAdjacentHTML('beforeend', productCard);
+  });
+}
+
+/**
+ * Filter Shop Products
+ */
+function filterShopProducts(searchTerm) {
+  const term = searchTerm.toLowerCase().trim();
+  
+  if (!term) {
+    renderShopProducts(allShopProducts);
+    return;
+  }
+  
+  const filtered = allShopProducts.filter(product => {
+    const name = (product.name || '').toLowerCase();
+    const brand = (product.brand || '').toLowerCase();
+    const size = (product.size || '').toLowerCase();
+    
+    return name.includes(term) || brand.includes(term) || size.includes(term);
+  });
+  
+  renderShopProducts(filtered);
+}
+
+/**
+ * Go Back to Home
+ */
+function goBackHome() {
+  console.log('🏠 Going back to home');
+  
+  // Hide shop products page
+  const shopProductsPage = document.getElementById('shopProductsPage');
+  if (shopProductsPage) {
+    shopProductsPage.style.display = 'none';
+    shopProductsPage.classList.remove('active');
+  }
+  
+  // Show main app and navbar
+  const mainApp = document.getElementById('mainApp');
+  const mainNavbar = document.getElementById('mainNavbar');
+  const sidebarToggleBtn = document.getElementById('sidebarToggleBtn');
+  
+  if (mainApp) {
+    mainApp.style.display = 'block';
+  }
+  
+  if (mainNavbar) {
+    mainNavbar.style.display = 'flex';
+  }
+  
+  if (sidebarToggleBtn) {
+    sidebarToggleBtn.style.display = 'block';
+  }
+  
+  // Clear search
+  const searchInput = document.getElementById('searchShopProductsInput');
+  if (searchInput) {
+    searchInput.value = '';
+  }
+  
+  // Reset current shop data
+  currentShopData = null;
+  allShopProducts = [];
+  
+  // Update hash
+  window.location.hash = '#home';
+  
+  // Scroll to top
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+
+/**
+ * Format Price
+ */
+function formatPrice(price) {
+  return Number(price || 0).toLocaleString('en-IN', {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
+  });
+}
+
+/**
+ * Add to Cart (Placeholder)
+ */
+function addToCart(productId) {
+  console.log('🛒 Add to cart:', productId);
+  alert('🛒 Add to Cart feature coming soon!\n\nProduct ID: ' + productId);
+}
 
 
 
