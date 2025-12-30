@@ -1213,6 +1213,84 @@ style="border-radius: 10px; font-weight: 700; padding: 15px; font-size: 1.1rem;"
 
 
 
+<!-- ============================================
+     ORDERS RECEIVED PAGE (SHOPOWNERS ONLY)
+     ============================================ -->
+     <div class="page-view" id="ordersReceivedPage" style="display: none;">
+  
+      <!-- Header -->
+      <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 20px; text-align: center;">
+        <h3 style="margin: 0; font-weight: 700;">
+          <i class="bi bi-inbox-fill me-2"></i>Orders Received
+        </h3>
+        <p style="margin: 5px 0 0 0; font-size: 0.85rem; opacity: 0.9;">Manage customer orders</p>
+      </div>
+      
+      <!-- Order Stats -->
+      <div class="container-fluid" style="padding: 15px;">
+        <div class="row g-2">
+          <div class="col-4">
+            <div class="card text-center" style="border-radius: 10px; border: none; background: #fff3cd;">
+              <div class="card-body" style="padding: 10px;">
+                <i class="bi bi-clock-history text-warning" style="font-size: 1.5rem;"></i>
+                <h4 class="mt-1 mb-0" id="shopPendingCount">0</h4>
+                <small style="font-size: 0.7rem;">Pending</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card text-center" style="border-radius: 10px; border: none; background: #d1ecf1;">
+              <div class="card-body" style="padding: 10px;">
+                <i class="bi bi-check-circle text-info" style="font-size: 1.5rem;"></i>
+                <h4 class="mt-1 mb-0" id="shopAcceptedCount">0</h4>
+                <small style="font-size: 0.7rem;">Accepted</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-4">
+            <div class="card text-center" style="border-radius: 10px; border: none; background: #d4edda;">
+              <div class="card-body" style="padding: 10px;">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 1.5rem;"></i>
+                <h4 class="mt-1 mb-0" id="shopDeliveredCount">0</h4>
+                <small style="font-size: 0.7rem;">Delivered</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Filter Buttons -->
+      <div class="container-fluid" style="padding: 0 15px 15px 15px;">
+        <div class="d-flex gap-2" style="overflow-x: auto; white-space: nowrap; padding-bottom: 5px;">
+          <button class="btn btn-sm btn-success" onclick="filterShopOrders('all')" style="border-radius: 20px;">All</button>
+          <button class="btn btn-sm btn-outline-warning" onclick="filterShopOrders('pending')" style="border-radius: 20px;">Pending</button>
+          <button class="btn btn-sm btn-outline-info" onclick="filterShopOrders('accepted')" style="border-radius: 20px;">Accepted</button>
+          <button class="btn btn-sm btn-outline-success" onclick="filterShopOrders('delivered')" style="border-radius: 20px;">Delivered</button>
+        </div>
+      </div>
+      
+      <!-- Orders List -->
+      <div class="container-fluid" style="padding: 0 15px 80px 15px;">
+        <div id="shopOrdersList">
+          <!-- Orders will be rendered here -->
+          <div style="text-align:center; padding:40px;">
+            <div class="spinner-border text-success" role="status"></div>
+            <p class="mt-3">Loading orders...</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Empty State -->
+      <div id="shopOrdersEmptyState" style="display:none; text-align:center; padding:60px 20px;">
+        <i class="bi bi-inbox" style="font-size:64px; color:#ccc;"></i>
+        <h4 style="margin-top:20px;">No Orders Yet</h4>
+        <p>You'll see customer orders here when they place orders from your shops.</p>
+      </div>
+      
+    </div>
+    
+
+
 
 
     <!-- ============================================
@@ -1253,6 +1331,39 @@ style="border-radius: 10px; font-weight: 700; padding: 15px; font-size: 1.1rem;"
   </div>
   
 </div>
+
+
+<!-- ============================================
+     MOBILE BOTTOM NAVIGATION (SHOPOWNERS ONLY)
+     ============================================ -->
+     <div id="mobileBottomNavShopowner" class="mobile-bottom-nav" style="display: none;">
+  
+      <!-- Home Tab -->
+      <div class="nav-tab active" onclick="switchShopownerMobileTab('home')" data-tab="home">
+        <i class="bi bi-house-door-fill"></i>
+        <span>Home</span>
+      </div>
+      
+      <!-- Orders Received Tab -->
+      <div class="nav-tab" onclick="switchShopownerMobileTab('orders-received')" data-tab="orders-received">
+        <div style="position: relative;">
+          <i class="bi bi-inbox-fill"></i>
+          <!-- Orders Badge -->
+          <span id="mobileOrdersBadge" class="mobile-cart-badge" style="display: none;">0</span>
+        </div>
+        <span>Orders</span>
+      </div>
+      
+      <!-- Settings Tab -->
+      <div class="nav-tab" onclick="switchShopownerMobileTab('settings')" data-tab="settings">
+        <i class="bi bi-gear-fill"></i>
+        <span>Settings</span>
+      </div>
+      
+    </div>
+    
+
+
 
 
     <!-- ============================================
@@ -1775,25 +1886,40 @@ transition: transform 0.3s ease;
       
     </div>
     
-    <!-- ============================================
-         ORDER DETAILS MODAL
-         ============================================ -->
-    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
-      <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
-        <div class="modal-content" style="border-radius: 15px;">
-          <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
-            <h5 class="modal-title"><i class="bi bi-receipt"></i> Order Details</h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
-          </div>
-          <div class="modal-body" id="orderDetailsModalBody">
-            <!-- Will be populated by JavaScript -->
-          </div>
-          <div class="modal-footer" style="border: none;">
-            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
-          </div>
-        </div>
+   <!-- ============================================
+     ORDER DETAILS MODAL (SHOPOWNERS)
+     ============================================ -->
+<div class="modal fade" id="shopOrderDetailsModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-scrollable" style="max-width: 500px;">
+    <div class="modal-content" style="border-radius: 12px; border: none;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
+        <h5 class="modal-title" style="font-weight: 700;">
+          <i class="bi bi-receipt-cutoff"></i> Order Details
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
       </div>
+      
+      <!-- Modal Body -->
+      <div class="modal-body" id="shopOrderDetailsBody" style="padding: 0;">
+        <!-- Content will be populated here -->
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="border-top: 1px solid #eee; padding: 15px;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+          <i class="bi bi-x-circle"></i> Close
+        </button>
+        <button type="button" class="btn btn-success" onclick="updateOrderStatus()" style="border-radius: 8px;">
+          <i class="bi bi-check-circle"></i> Update Status
+        </button>
+      </div>
+      
     </div>
+  </div>
+</div>
+
 
     <!-- ============================================
      DELIVERY ADDRESS MODAL
@@ -4261,6 +4387,1272 @@ console.log('✅ Featured products management loaded (FIXED VERSION)');
 
 
 
+/**
+ * ==========================================
+ * MOBILE BOTTOM NAVIGATION (ROLE-BASED)
+ * ==========================================
+ */
+
+// Global variables
+let currentMobileTab = 'home';
+
+/**
+ * Initialize Mobile Bottom Navigation (UPDATED - Role-based)
+ */
+function initializeMobileBottomNav() {
+  console.log('📱 Initializing mobile bottom navigation...');
+  
+  if (!window.currentUser) {
+    console.log('⚠️ No user signed in');
+    hideMobileBottomNav();
+    hideShopownerMobileBottomNav();
+    return;
+  }
+  
+  // Check if mobile
+  if (!isMobileDevice()) {
+    console.log('⚠️ Not a mobile device');
+    hideMobileBottomNav();
+    hideShopownerMobileBottomNav();
+    return;
+  }
+  
+  // Show appropriate nav based on role
+  if (window.currentUser.role === 'customer') {
+    console.log('✅ Showing customer mobile nav');
+    showMobileBottomNav();
+    hideShopownerMobileBottomNav();
+    updateMobileCartBadge();
+    switchMobileTab('home', false);
+  } else if (window.currentUser.role === 'shopowner') {
+    console.log('✅ Showing shopowner mobile nav');
+    hideShopownerMobileBottomNav();
+    showShopownerMobileBottomNav();
+    updateMobileOrdersBadge();
+    switchShopownerMobileTab('home', false);
+  } else {
+    hideMobileBottomNav();
+    hideShopownerMobileBottomNav();
+  }
+  
+  console.log('✅ Mobile bottom navigation initialized');
+}
+
+/**
+ * Check if Mobile Device
+ */
+function isMobileDevice() {
+  return window.innerWidth <= 767;
+}
+
+/**
+ * Show Mobile Bottom Navigation (Customer)
+ */
+function showMobileBottomNav() {
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) {
+    bottomNav.style.display = 'flex';
+    document.body.classList.add('mobile-customer-view');
+    console.log('✅ Customer mobile bottom nav shown');
+  }
+}
+
+/**
+ * Hide Mobile Bottom Navigation (Customer)
+ */
+function hideMobileBottomNav() {
+  const bottomNav = document.getElementById('mobileBottomNav');
+  if (bottomNav) {
+    bottomNav.style.display = 'none';
+    document.body.classList.remove('mobile-customer-view');
+    console.log('🚫 Customer mobile bottom nav hidden');
+  }
+}
+
+/**
+ * Show Shopowner Mobile Bottom Navigation (NEW)
+ */
+function showShopownerMobileBottomNav() {
+  const bottomNav = document.getElementById('mobileBottomNavShopowner');
+  if (bottomNav) {
+    bottomNav.style.display = 'flex';
+    document.body.classList.add('mobile-shopowner-view');
+    console.log('✅ Shopowner mobile bottom nav shown');
+  }
+}
+
+/**
+ * Hide Shopowner Mobile Bottom Navigation (NEW)
+ */
+function hideShopownerMobileBottomNav() {
+  const bottomNav = document.getElementById('mobileBottomNavShopowner');
+  if (bottomNav) {
+    bottomNav.style.display = 'none';
+    document.body.classList.remove('mobile-shopowner-view');
+    console.log('🚫 Shopowner mobile bottom nav hidden');
+  }
+}
+
+/**
+ * Switch Mobile Tab (Customer)
+ */
+function switchMobileTab(tabName, updateHistory = true) {
+  console.log('🔄 Switching to customer tab:', tabName);
+  
+  // Update active tab
+  const allTabs = document.querySelectorAll('#mobileBottomNav .nav-tab');
+  allTabs.forEach(tab => {
+    if (tab.dataset.tab === tabName) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  
+  // Hide all pages
+  hideAllPages();
+  
+  // Show selected page
+  switch (tabName) {
+    case 'home':
+      console.log('📱 Showing home page');
+      showPage('mainApp');
+      break;
+      
+    case 'orders':
+      console.log('📱 Showing orders page');
+      showPage('myOrdersPage');
+      setTimeout(() => {
+        if (typeof loadMyOrders === 'function') {
+          loadMyOrders();
+        } else if (typeof loadCustomerOrders === 'function') {
+          loadCustomerOrders();
+        } else {
+          loadOrdersDirectly();
+        }
+      }, 100);
+      break;
+      
+    case 'cart':
+      console.log('📱 Showing cart page');
+      showPage('cartPage');
+      if (typeof updateCartPage === 'function') {
+        updateCartPage();
+      }
+      break;
+      
+    case 'settings':
+      console.log('📱 Showing settings page');
+      showPage('mobileSettingsPage');
+      break;
+  }
+  
+  currentMobileTab = tabName;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  if (updateHistory) {
+    window.location.hash = '#mobile-' + tabName;
+  }
+  
+  console.log('✅ Switched to customer tab:', tabName);
+}
+
+/**
+ * Switch Shopowner Mobile Tab (NEW)
+ */
+function switchShopownerMobileTab(tabName, updateHistory = true) {
+  console.log('🔄 Switching to shopowner tab:', tabName);
+  
+  // Update active tab
+  const allTabs = document.querySelectorAll('#mobileBottomNavShopowner .nav-tab');
+  allTabs.forEach(tab => {
+    if (tab.dataset.tab === tabName) {
+      tab.classList.add('active');
+    } else {
+      tab.classList.remove('active');
+    }
+  });
+  
+  // Hide all pages
+  hideAllPages();
+  
+  // Show selected page
+  switch (tabName) {
+    case 'home':
+      console.log('📱 Showing home page (shopowner)');
+      showPage('mainApp');
+      break;
+      
+    case 'orders-received':
+      console.log('📱 Showing orders received page');
+      showPage('ordersReceivedPage');
+      setTimeout(() => {
+        loadShopOrders();
+      }, 100);
+      break;
+      
+    case 'settings':
+      console.log('📱 Showing settings page (shopowner)');
+      showPage('mobileSettingsPage');
+      break;
+  }
+  
+  currentMobileTab = tabName;
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  
+  if (updateHistory) {
+    window.location.hash = '#mobile-shopowner-' + tabName;
+  }
+  
+  console.log('✅ Switched to shopowner tab:', tabName);
+}
+
+/**
+ * Hide All Pages (Helper)
+ */
+function hideAllPages() {
+  const pages = [
+    'mainApp', 
+    'cartPage', 
+    'myOrdersPage', 
+    'shopProductsPage', 
+    'mobileSettingsPage',
+    'ordersReceivedPage'
+  ];
+  
+  pages.forEach(pageId => {
+    const page = document.getElementById(pageId);
+    if (page) {
+      page.style.display = 'none';
+      page.classList.remove('active');
+    }
+  });
+}
+
+/**
+ * Show Page (Helper)
+ */
+function showPage(pageId) {
+  const page = document.getElementById(pageId);
+  if (page) {
+    page.style.display = 'block';
+    page.classList.add('active');
+  }
+}
+/**
+ * Load Shop Orders (Shopowner) - UPDATED to show ALL orders for ANY shopowner
+ */
+ async function loadShopOrders() {
+  console.log('📦 Loading ALL shop orders (Global View)...');
+  console.log('========================================');
+  
+  const ordersList = document.getElementById('shopOrdersList');
+  const emptyState = document.getElementById('shopOrdersEmptyState');
+  
+  if (!ordersList) {
+    console.error('❌ shopOrdersList element not found');
+    return;
+  }
+  
+  // Show loading
+  ordersList.innerHTML = `
+    <div style="text-align:center; padding:40px;">
+      <div class="spinner-border text-success" role="status"></div>
+      <p class="mt-3">Loading all orders...</p>
+    </div>
+  `;
+  
+  // ✅ CHECK USER
+  if (!window.currentUser) {
+    console.error('❌ No user signed in');
+    ordersList.innerHTML = `
+      <div class="alert alert-warning">
+        <i class="bi bi-exclamation-triangle"></i> Please sign in to view orders.
+      </div>
+    `;
+    return;
+  }
+  
+  // ✅ LOG USER DETAILS
+  console.log('👤 Current User Details:');
+  console.log('  - UID:', window.currentUser.uid);
+  console.log('  - Email:', window.currentUser.email);
+  console.log('  - Role:', window.currentUser.role);
+  console.log('========================================');
+  
+  if (window.currentUser.role !== 'shopowner') {
+    console.error('❌ User is not a shopowner');
+    ordersList.innerHTML = `
+      <div class="alert alert-danger">
+        <i class="bi bi-x-circle"></i> Only shopowners can view this page.
+      </div>
+    `;
+    return;
+  }
+  
+  try {
+    const { collection, collectionGroup, query, getDocs, orderBy } = window.firebaseImports;
+    
+    console.log('🔍 Loading ALL orders from ALL shops...');
+    console.log('========================================');
+    
+    // ✅ METHOD 1: Get ALL orders using collectionGroup (no filter)
+    try {
+      console.log('📦 Method 1: CollectionGroup query for ALL orders...');
+      
+      const ordersRef = collectionGroup(window.db, 'orders');
+      const q = query(
+        ordersRef,
+        orderBy('createdAt', 'desc')
+      );
+      
+      const querySnapshot = await getDocs(q);
+      
+      console.log('✅ Query successful! Found', querySnapshot.size, 'total orders');
+      
+      if (querySnapshot.size > 0) {
+        const allOrders = [];
+        
+        querySnapshot.forEach((doc) => {
+          const orderData = doc.data();
+          
+          console.log('  📄 Order:', doc.id);
+          console.log('    - Shop:', orderData.shopName);
+          console.log('    - Status:', orderData.status);
+          console.log('    - Customer:', orderData.customerName || orderData.deliveryAddress?.name);
+          console.log('    - Total:', orderData.totalAmount || orderData.total);
+          
+          allOrders.push({
+            id: doc.id,
+            ...orderData,
+            // Convert Firestore Timestamp
+            createdAt: orderData.createdAt?.toDate ? orderData.createdAt.toDate().toISOString() : orderData.createdAt,
+            placedAt: orderData.placedAt?.toDate ? orderData.placedAt.toDate().toISOString() : orderData.placedAt
+          });
+        });
+        
+        console.log('========================================');
+        console.log('✅ Total orders loaded:', allOrders.length);
+        console.log('========================================');
+        
+        if (emptyState) emptyState.style.display = 'none';
+        
+        window.allShopOrders = allOrders;
+        updateShopOrderStats(allOrders);
+        renderShopOrders(allOrders);
+        updateMobileOrdersBadge();
+        
+        console.log('✅ All orders rendered successfully!');
+        return;
+      }
+      
+    } catch (method1Error) {
+      console.warn('⚠️ Method 1 failed:', method1Error.message);
+      console.log('Trying Method 2 (fallback)...');
+    }
+    
+    // ✅ METHOD 2: Get all shops, then query each shop's orders
+    console.log('📦 Method 2: Query each shop individually...');
+    console.log('========================================');
+    
+    const shopsRef = collection(window.db, 'shops');
+    const shopsSnapshot = await getDocs(shopsRef);
+    
+    console.log('🏪 Found', shopsSnapshot.size, 'total shops in system');
+    
+    const allOrders = [];
+    
+    for (const shopDoc of shopsSnapshot.docs) {
+      const shopData = shopDoc.data();
+      console.log('  🏪 Shop:', shopDoc.id, '→', shopData.shopName);
+      
+      const shopOrdersRef = collection(window.db, 'shops', shopDoc.id, 'orders');
+      const shopOrdersSnapshot = await getDocs(shopOrdersRef);
+      
+      console.log('    ✅ Found', shopOrdersSnapshot.size, 'orders');
+      
+      shopOrdersSnapshot.forEach(orderDoc => {
+        const orderData = orderDoc.data();
+        
+        console.log('      📄 Order:', orderDoc.id);
+        console.log('        - Status:', orderData.status);
+        console.log('        - Customer:', orderData.customerName || orderData.deliveryAddress?.name);
+        console.log('        - Total:', orderData.totalAmount || orderData.total);
+        
+        allOrders.push({
+          id: orderDoc.id,
+          shopId: shopDoc.id,
+          shopName: shopData.shopName,
+          ...orderData,
+          createdAt: orderData.createdAt?.toDate ? orderData.createdAt.toDate().toISOString() : orderData.createdAt,
+          placedAt: orderData.placedAt?.toDate ? orderData.placedAt.toDate().toISOString() : orderData.placedAt
+        });
+      });
+    }
+    
+    console.log('========================================');
+    console.log('✅ Total orders found:', allOrders.length);
+    console.log('========================================');
+    
+    // ✅ IF NO ORDERS: Show empty state
+    if (allOrders.length === 0) {
+      console.log('📭 No orders found in entire system');
+      ordersList.innerHTML = '';
+      if (emptyState) emptyState.style.display = 'block';
+      
+      updateShopOrderStats([]);
+      updateMobileOrdersBadge();
+      return;
+    }
+    
+    // ✅ Sort by date (newest first)
+    allOrders.sort((a, b) => {
+      const dateA = a.createdAt ? new Date(a.createdAt) : (a.placedAt ? new Date(a.placedAt) : new Date(0));
+      const dateB = b.createdAt ? new Date(b.createdAt) : (b.placedAt ? new Date(b.placedAt) : new Date(0));
+      return dateB - dateA;
+    });
+    
+    if (emptyState) emptyState.style.display = 'none';
+    
+    // ✅ Store and render
+    window.allShopOrders = allOrders;
+    updateShopOrderStats(allOrders);
+    renderShopOrders(allOrders);
+    updateMobileOrdersBadge();
+    
+    console.log('✅ All orders loaded and rendered successfully!');
+    
+  } catch (error) {
+    console.error('❌ Error loading orders:', error);
+    console.error('Error details:', {
+      code: error.code,
+      message: error.message,
+      stack: error.stack
+    });
+    
+    ordersList.innerHTML = `
+      <div class="alert alert-danger" style="margin: 20px;">
+        <h5><i class="bi bi-x-circle"></i> Error Loading Orders</h5>
+        <p><strong>Error:</strong> ${error.message}</p>
+        <button class="btn btn-sm btn-primary mt-2" onclick="loadShopOrders()">
+          <i class="bi bi-arrow-clockwise me-1"></i>Retry
+        </button>
+      </div>
+    `;
+  }
+}
+
+// Make it global
+window.loadShopOrders = loadShopOrders;
+
+console.log('✅ Shop orders (Global View) functions loaded');
+
+
+/**
+ * Navigate to Manage Shops (Helper)
+ */
+function navigateToManageShops() {
+  console.log('📍 Navigating to Manage Shops...');
+  
+  // If on mobile, go back to home and open sidebar
+  if (isMobileDevice()) {
+    switchShopownerMobileTab('home');
+    
+    // Wait a bit then open sidebar
+    setTimeout(() => {
+      const sidebar = document.getElementById('sideNav');
+      if (sidebar) {
+        sidebar.classList.add('open');
+      }
+    }, 300);
+  } else {
+    // Desktop: Navigate to manage shops
+    if (typeof navigateToShops === 'function') {
+      navigateToShops();
+    } else {
+      alert('Please use the sidebar to navigate to "Manage Shops"');
+    }
+  }
+}
+
+// Make functions global
+window.loadShopOrders = loadShopOrders;
+window.navigateToManageShops = navigateToManageShops;
+
+console.log('✅ Shop orders functions loaded');
+
+
+/**
+ * Update Shop Order Statistics (UPDATED)
+ */
+function updateShopOrderStats(orders) {
+  console.log('📊 Updating shop order stats...');
+  
+  const pending = orders.filter(o => o.status === 'pending').length;
+  const accepted = orders.filter(o => o.status === 'accepted').length;
+  const delivered = orders.filter(o => o.status === 'delivered').length;
+  
+  console.log('Stats:', { total: orders.length, pending, accepted, delivered });
+  
+  const pendingEl = document.getElementById('shopPendingCount');
+  const acceptedEl = document.getElementById('shopAcceptedCount');
+  const deliveredEl = document.getElementById('shopDeliveredCount');
+  
+  if (pendingEl) pendingEl.textContent = pending;
+  if (acceptedEl) acceptedEl.textContent = accepted;
+  if (deliveredEl) deliveredEl.textContent = delivered;
+  
+  console.log('✅ Stats updated');
+}
+/**
+ * Render Shop Orders (UPDATED with Accept button)
+ */
+ function renderShopOrders(orders) {
+  console.log('🎨 Rendering', orders.length, 'shop orders');
+  
+  const container = document.getElementById('shopOrdersList');
+  if (!container) {
+    console.error('❌ shopOrdersList not found');
+    return;
+  }
+  
+  if (orders.length === 0) {
+    container.innerHTML = `
+      <div class="alert alert-info">
+        <i class="bi bi-info-circle"></i> No orders match your filter.
+      </div>
+    `;
+    return;
+  }
+  
+  let html = '';
+  
+  orders.forEach(order => {
+    const statusColor = getOrderStatusColor(order.status);
+    const statusText = getOrderStatusText(order.status);
+    
+    // ✅ Format date properly
+    let orderDate = 'N/A';
+    let orderTime = '';
+    
+    if (order.createdAt || order.placedAt) {
+      try {
+        const date = new Date(order.createdAt || order.placedAt);
+        orderDate = date.toLocaleDateString('en-IN', { 
+          day: '2-digit', 
+          month: 'short', 
+          year: 'numeric' 
+        });
+        orderTime = date.toLocaleTimeString('en-IN', { 
+          hour: '2-digit', 
+          minute: '2-digit' 
+        });
+      } catch (e) {
+        console.warn('Error formatting date:', e);
+      }
+    }
+    
+    // ✅ Check if order is pending (can be accepted)
+    const isPending = order.status === 'pending';
+    
+    html += `
+      <div class="card mb-2" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
+        <div class="card-body" style="padding: 12px;">
+          
+          <!-- Order Header -->
+          <div class="d-flex justify-content-between align-items-start mb-2">
+            <div>
+              <h6 style="font-weight: 700; margin: 0; font-size: 0.9rem; color: #333;">
+                <i class="bi bi-receipt"></i> #${order.id.slice(-8)}
+              </h6>
+              <small class="text-muted" style="font-size: 0.75rem;">
+                <i class="bi bi-calendar3"></i> ${orderDate}
+                ${orderTime ? `<i class="bi bi-clock ms-2"></i> ${orderTime}` : ''}
+              </small>
+            </div>
+            <span class="badge" style="background: ${statusColor}; font-size: 0.75rem; padding: 4px 8px;">
+              ${statusText}
+            </span>
+          </div>
+          
+          <!-- Shop Name -->
+          <p style="margin: 5px 0; font-size: 0.85rem;">
+            <i class="bi bi-shop"></i> <strong>${escapeHtml(order.shopName || 'Shop')}</strong>
+          </p>
+          
+          <!-- Customer Info -->
+          <p style="margin: 5px 0; font-size: 0.85rem;">
+            <i class="bi bi-person"></i> ${escapeHtml(order.customerName || order.deliveryAddress?.name || 'Customer')}
+          </p>
+          
+          <!-- Items Count -->
+          <p style="margin: 5px 0; font-size: 0.85rem;">
+            <i class="bi bi-box-seam"></i> ${order.items ? order.items.length : 0} item${order.items && order.items.length !== 1 ? 's' : ''}
+          </p>
+          
+          <!-- Total & Actions -->
+          <div class="d-flex justify-content-between align-items-center mt-2 gap-2">
+            <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">
+              ₹${(order.totalAmount || order.total || 0).toFixed(2)}
+            </span>
+            <div class="d-flex gap-2">
+              ${isPending ? `
+                <!-- ✅ ACCEPT BUTTON (Only for pending orders) -->
+                <button 
+                  class="btn btn-sm btn-success" 
+                  onclick="acceptOrder('${order.id}', '${order.shopId || ''}')" 
+                  style="border-radius: 6px; font-size: 0.8rem; padding: 4px 12px; white-space: nowrap;"
+                  id="acceptBtn_${order.id}">
+                  <i class="bi bi-check-circle"></i> Accept
+                </button>
+              ` : ''}
+              <!-- VIEW BUTTON -->
+              <button 
+                class="btn btn-sm btn-primary" 
+                onclick="viewShopOrderDetails('${order.id}')" 
+                style="border-radius: 6px; font-size: 0.8rem; padding: 4px 12px;">
+                <i class="bi bi-eye"></i> View
+              </button>
+            </div>
+          </div>
+          
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+  console.log('✅ Rendered', orders.length, 'orders with action buttons');
+}
+
+
+
+
+/**
+ * Filter Shop Orders (UPDATED)
+ */
+function filterShopOrders(status) {
+  console.log('🔍 Filtering orders by:', status);
+  
+  if (!window.allShopOrders) {
+    console.warn('⚠️ No orders to filter');
+    return;
+  }
+  
+  if (status === 'all') {
+    renderShopOrders(window.allShopOrders);
+    console.log('✅ Showing all', window.allShopOrders.length, 'orders');
+  } else {
+    const filtered = window.allShopOrders.filter(o => o.status === status);
+    renderShopOrders(filtered);
+    console.log('✅ Showing', filtered.length, 'orders with status:', status);
+  }
+}
+/**
+ * View Shop Order Details (UPDATED with Accept button in modal)
+ */
+ function viewShopOrderDetails(orderId) {
+  console.log('👀 Viewing detailed order:', orderId);
+  
+  const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+  
+  if (!order) {
+    alert('❌ Order not found!');
+    return;
+  }
+  
+  // Format dates
+  let orderDate = 'N/A';
+  let orderTime = '';
+  
+  if (order.createdAt || order.placedAt) {
+    try {
+      const date = new Date(order.createdAt || order.placedAt);
+      orderDate = date.toLocaleDateString('en-IN', { 
+        day: '2-digit', 
+        month: 'long', 
+        year: 'numeric' 
+      });
+      orderTime = date.toLocaleTimeString('en-IN', { 
+        hour: '2-digit', 
+        minute: '2-digit',
+        second: '2-digit'
+      });
+    } catch (e) {
+      console.warn('Error formatting date:', e);
+    }
+  }
+  
+  // Get status badge
+  const statusColor = getOrderStatusColor(order.status);
+  const statusText = getOrderStatusText(order.status);
+  
+  // Format items list
+  let itemsHtml = '';
+  if (order.items && order.items.length > 0) {
+    order.items.forEach((item, index) => {
+      const itemTotal = (item.price || 0) * (item.quantity || 0);
+      itemsHtml += `
+        <div class="d-flex justify-content-between align-items-start mb-2 pb-2" style="border-bottom: 1px solid #f0f0f0;">
+          <div style="flex: 1;">
+            <div style="font-weight: 600; color: #333;">${index + 1}. ${escapeHtml(item.name || 'Item')}</div>
+            ${item.brand ? `<small class="text-muted"><i class="bi bi-tag"></i> ${escapeHtml(item.brand)}</small><br>` : ''}
+            ${item.size ? `<small class="text-muted"><i class="bi bi-rulers"></i> ${escapeHtml(item.size)}</small><br>` : ''}
+            <small class="text-muted">₹${(item.price || 0).toFixed(2)} × ${item.quantity || 0}</small>
+          </div>
+          <div style="font-weight: 700; color: #25D366;">
+            ₹${itemTotal.toFixed(2)}
+          </div>
+        </div>
+      `;
+    });
+  } else {
+    itemsHtml = '<p class="text-muted">No items</p>';
+  }
+  
+  // Build modal content
+  const modalBody = document.getElementById('shopOrderDetailsBody');
+  if (!modalBody) {
+    console.error('Modal body not found');
+    return;
+  }
+  
+  modalBody.innerHTML = `
+    <!-- Order ID & Status -->
+    <div style="padding: 20px; background: linear-gradient(135deg, #f8f9fa 0%, #e9ecef 100%); border-bottom: 1px solid #dee2e6;">
+      <div class="d-flex justify-content-between align-items-center mb-2">
+        <h6 style="margin: 0; font-weight: 700; color: #333;">
+          Order #${order.id.slice(-8)}
+        </h6>
+        <span class="badge" style="background: ${statusColor}; font-size: 0.85rem; padding: 6px 12px;">
+          ${statusText}
+        </span>
+      </div>
+      <small class="text-muted">
+        <i class="bi bi-calendar3"></i> ${orderDate}<br>
+        <i class="bi bi-clock"></i> ${orderTime}
+      </small>
+    </div>
+    
+    <!-- Shop Information -->
+    <div style="padding: 15px; border-bottom: 1px solid #eee;">
+      <h6 style="font-weight: 700; color: #333; margin-bottom: 10px;">
+        <i class="bi bi-shop"></i> Shop Information
+      </h6>
+      <p style="margin: 5px 0; font-size: 0.9rem;">
+        <strong>Shop Name:</strong> ${escapeHtml(order.shopName || 'N/A')}
+      </p>
+      ${order.shopId ? `<p style="margin: 5px 0; font-size: 0.85rem; color: #666;"><strong>Shop ID:</strong> <code>${order.shopId}</code></p>` : ''}
+      ${order.shopOwnerId ? `<p style="margin: 5px 0; font-size: 0.85rem; color: #666;"><strong>Owner ID:</strong> <code>${order.shopOwnerId.slice(0, 10)}...</code></p>` : ''}
+    </div>
+    
+    <!-- Customer Information -->
+    <div style="padding: 15px; border-bottom: 1px solid #eee;">
+      <h6 style="font-weight: 700; color: #333; margin-bottom: 10px;">
+        <i class="bi bi-person-circle"></i> Customer Information
+      </h6>
+      <p style="margin: 5px 0; font-size: 0.9rem;">
+        <strong><i class="bi bi-person"></i> Name:</strong> ${escapeHtml(order.customerName || order.deliveryAddress?.name || 'N/A')}
+      </p>
+      ${order.customerId ? `<p style="margin: 5px 0; font-size: 0.85rem; color: #666;"><strong>Customer ID:</strong> <code>${order.customerId.slice(0, 10)}...</code></p>` : ''}
+    </div>
+    
+    <!-- Delivery Address -->
+    <div style="padding: 15px; border-bottom: 1px solid #eee;">
+      <h6 style="font-weight: 700; color: #333; margin-bottom: 10px;">
+        <i class="bi bi-geo-alt-fill"></i> Delivery Address
+      </h6>
+      ${order.deliveryAddress ? `
+        <p style="margin: 5px 0; font-size: 0.9rem; line-height: 1.6;">
+          <strong><i class="bi bi-house-door"></i> Address:</strong><br>
+          ${escapeHtml(order.deliveryAddress.fullAddress || 'N/A')}
+        </p>
+        <p style="margin: 5px 0; font-size: 0.9rem;">
+          <strong><i class="bi bi-telephone"></i> Phone:</strong> 
+          <a href="tel:${order.deliveryAddress.phone}" style="color: #25D366; text-decoration: none; font-weight: 600;">
+            ${escapeHtml(order.deliveryAddress.phone || 'N/A')}
+          </a>
+        </p>
+      ` : '<p class="text-muted">No delivery address provided</p>'}
+    </div>
+    
+    <!-- Order Items -->
+    <div style="padding: 15px; border-bottom: 1px solid #eee;">
+      <h6 style="font-weight: 700; color: #333; margin-bottom: 15px;">
+        <i class="bi bi-box-seam"></i> Order Items (${order.items ? order.items.length : 0})
+      </h6>
+      ${itemsHtml}
+    </div>
+    
+    <!-- Price Breakdown -->
+    <div style="padding: 15px; background: #f8f9fa;">
+      <h6 style="font-weight: 700; color: #333; margin-bottom: 15px;">
+        <i class="bi bi-calculator"></i> Price Details
+      </h6>
+      
+      <div class="d-flex justify-content-between mb-2">
+        <span>Subtotal (${order.items ? order.items.length : 0} items)</span>
+        <span style="font-weight: 600;">₹${(order.subtotal || order.totalAmount || 0).toFixed(2)}</span>
+      </div>
+      
+      <div class="d-flex justify-content-between mb-2">
+        <span>Tax & GST</span>
+        <span style="font-weight: 600;">₹${(order.tax || 0).toFixed(2)}</span>
+      </div>
+      
+      <div class="d-flex justify-content-between mb-2">
+        <span>Delivery Charges</span>
+        <span style="font-weight: 600; color: #25D366;">FREE</span>
+      </div>
+      
+      <hr style="margin: 10px 0;">
+      
+      <div class="d-flex justify-content-between" style="font-size: 1.1rem;">
+        <strong>Total Amount</strong>
+        <strong style="color: #25D366; font-size: 1.3rem;">₹${(order.totalAmount || order.total || 0).toFixed(2)}</strong>
+      </div>
+    </div>
+    
+    <!-- Payment Method -->
+    <div style="padding: 15px; border-top: 1px solid #eee;">
+      <div class="d-flex align-items-center justify-content-between">
+        <span style="font-weight: 600;">
+          <i class="bi bi-cash-coin"></i> Payment Method
+        </span>
+        <span class="badge bg-warning text-dark" style="font-size: 0.9rem; padding: 6px 12px;">
+          <i class="bi bi-cash"></i> ${order.paymentMethod || 'Cash on Delivery'}
+        </span>
+      </div>
+    </div>
+    
+    <!-- Additional Info -->
+    ${order.deliveryTime || order.orderNotes ? `
+      <div style="padding: 15px; border-top: 1px solid #eee;">
+        <h6 style="font-weight: 700; color: #333; margin-bottom: 10px;">
+          <i class="bi bi-info-circle"></i> Additional Information
+        </h6>
+        ${order.deliveryTime ? `
+          <p style="margin: 5px 0; font-size: 0.9rem;">
+            <strong><i class="bi bi-clock"></i> Delivery Time:</strong> ${escapeHtml(order.deliveryTime)}
+          </p>
+        ` : ''}
+        ${order.orderNotes ? `
+          <p style="margin: 5px 0; font-size: 0.9rem;">
+            <strong><i class="bi bi-sticky"></i> Notes:</strong> ${escapeHtml(order.orderNotes)}
+          </p>
+        ` : ''}
+      </div>
+    ` : ''}
+    
+    <!-- Order ID (Full) -->
+    <div style="padding: 15px; background: #f8f9fa; border-top: 1px solid #eee;">
+      <small class="text-muted">
+        <strong>Full Order ID:</strong><br>
+        <code style="font-size: 0.75rem; word-break: break-all;">${order.id}</code>
+      </small>
+    </div>
+  `;
+  
+  // ✅ UPDATE MODAL FOOTER based on order status
+  const modalFooter = document.querySelector('#shopOrderDetailsModal .modal-footer');
+  if (modalFooter) {
+    if (order.status === 'pending') {
+      // Show Accept button for pending orders
+      modalFooter.innerHTML = `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+          <i class="bi bi-x-circle"></i> Close
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-success" 
+          onclick="acceptOrderFromModal('${order.id}', '${order.shopId || ''}')" 
+          style="border-radius: 8px;"
+          id="modalAcceptBtn">
+          <i class="bi bi-check-circle"></i> Accept Order
+        </button>
+      `;
+    } else {
+      // Show status badge for non-pending orders
+      modalFooter.innerHTML = `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+          <i class="bi bi-x-circle"></i> Close
+        </button>
+        <span class="badge" style="background: ${statusColor}; font-size: 1rem; padding: 8px 16px;">
+          <i class="bi bi-info-circle"></i> Status: ${statusText}
+        </span>
+      `;
+    }
+  }
+  
+  // Store current order ID for reference
+  window.currentViewingOrderId = orderId;
+  
+  // Show modal
+  const modal = new bootstrap.Modal(document.getElementById('shopOrderDetailsModal'));
+  modal.show();
+  
+  console.log('✅ Order details modal displayed');
+}
+
+/**
+ * Accept Order from Modal (with modal close on success)
+ */
+async function acceptOrderFromModal(orderId, shopId) {
+  console.log('✅ Accepting order from modal:', orderId);
+  
+  // Get the modal button
+  const modalAcceptBtn = document.getElementById('modalAcceptBtn');
+  
+  // Call the main accept function
+  if (modalAcceptBtn) {
+    modalAcceptBtn.disabled = true;
+    modalAcceptBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Accepting...';
+  }
+  
+  try {
+    // Use the existing acceptOrder logic
+    const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+    
+    if (!order) {
+      alert('❌ Order not found!');
+      return;
+    }
+    
+    if (order.status !== 'pending') {
+      alert(`⚠️ This order is already ${order.status}!`);
+      return;
+    }
+    
+    const { doc, updateDoc, serverTimestamp } = window.firebaseImports;
+    
+    const orderRef = doc(window.db, 'shops', shopId, 'orders', orderId);
+    
+    await updateDoc(orderRef, {
+      status: 'accepted',
+      acceptedAt: serverTimestamp(),
+      acceptedBy: window.currentUser.uid,
+      acceptedByName: window.currentUser.displayName || window.currentUser.email || 'Shopowner',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order accepted successfully!');
+    
+    // Update button
+    if (modalAcceptBtn) {
+      modalAcceptBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Accepted!';
+      modalAcceptBtn.classList.remove('btn-success');
+      modalAcceptBtn.classList.add('btn-secondary');
+    }
+    
+    // Update local order
+    order.status = 'accepted';
+    order.acceptedAt = new Date().toISOString();
+    order.acceptedBy = window.currentUser.uid;
+    order.acceptedByName = window.currentUser.displayName || window.currentUser.email || 'Shopowner';
+    
+    // Update stats
+    updateShopOrderStats(window.allShopOrders);
+    updateMobileOrdersBadge();
+    
+    // Re-render orders
+    setTimeout(() => {
+      renderShopOrders(window.allShopOrders);
+    }, 1000);
+    
+    // Show success message
+    alert('✅ Order Accepted!\n\nOrder has been marked as accepted.');
+    
+    // Close modal after 1 second
+    setTimeout(() => {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('shopOrderDetailsModal'));
+      if (modal) modal.hide();
+    }, 1000);
+    
+  } catch (error) {
+    console.error('❌ Error accepting order:', error);
+    alert(`❌ Error accepting order:\n\n${error.message}`);
+    
+    if (modalAcceptBtn) {
+      modalAcceptBtn.disabled = false;
+      modalAcceptBtn.innerHTML = '<i class="bi bi-check-circle"></i> Accept Order';
+    }
+  }
+}
+
+// Make functions global
+window.viewShopOrderDetails = viewShopOrderDetails;
+window.acceptOrderFromModal = acceptOrderFromModal;
+
+console.log('✅ Order details modal with Accept button loaded');
+
+
+/**
+ * Update Order Status (Placeholder)
+ */
+function updateOrderStatus() {
+  const orderId = window.currentViewingOrderId;
+  
+  if (!orderId) {
+    alert('No order selected');
+    return;
+  }
+  
+  const order = window.allShopOrders.find(o => o.id === orderId);
+  if (!order) {
+    alert('Order not found');
+    return;
+  }
+  
+  // Show status options
+  const newStatus = prompt(`Update Order Status\n\nCurrent: ${order.status}\n\nEnter new status:\n- pending\n- accepted\n- preparing\n- ready\n- delivered\n- cancelled`, order.status);
+  
+  if (!newStatus) return;
+  
+  const validStatuses = ['pending', 'accepted', 'preparing', 'ready', 'delivered', 'cancelled'];
+  
+  if (!validStatuses.includes(newStatus.toLowerCase())) {
+    alert('Invalid status! Please use: ' + validStatuses.join(', '));
+    return;
+  }
+  
+  // TODO: Update status in Firebase
+  console.log('📝 Updating order', orderId, 'to status:', newStatus);
+  alert(`Status update feature coming soon!\n\nOrder: ${orderId}\nNew Status: ${newStatus}`);
+  
+  // TODO: Implement Firebase update
+  // await updateDoc(doc(db, 'shops', order.shopId, 'orders', orderId), {
+  //   status: newStatus,
+  //   updatedAt: serverTimestamp()
+  // });
+}
+
+// Make functions global
+window.viewShopOrderDetails = viewShopOrderDetails;
+window.updateOrderStatus = updateOrderStatus;
+
+console.log('✅ Order details modal functions loaded');
+
+
+/**
+ * Update Shop Order Statistics
+ */
+function updateShopOrderStats(orders) {
+  const pending = orders.filter(o => o.status === 'pending').length;
+  const accepted = orders.filter(o => o.status === 'accepted').length;
+  const delivered = orders.filter(o => o.status === 'delivered').length;
+  
+  const pendingEl = document.getElementById('shopPendingCount');
+  const acceptedEl = document.getElementById('shopAcceptedCount');
+  const deliveredEl = document.getElementById('shopDeliveredCount');
+  
+  if (pendingEl) pendingEl.textContent = pending;
+  if (acceptedEl) acceptedEl.textContent = accepted;
+  if (deliveredEl) deliveredEl.textContent = delivered;
+}
+
+
+
+/**
+ * Filter Shop Orders
+ */
+function filterShopOrders(status) {
+  if (!window.allShopOrders) return;
+  
+  if (status === 'all') {
+    renderShopOrders(window.allShopOrders);
+  } else {
+    const filtered = window.allShopOrders.filter(o => o.status === status);
+    renderShopOrders(filtered);
+  }
+}
+
+
+
+/**
+ * Update Mobile Orders Badge (Shopowner)
+ */
+function updateMobileOrdersBadge() {
+  const badge = document.getElementById('mobileOrdersBadge');
+  if (!badge) return;
+  
+  if (!window.allShopOrders) {
+    badge.style.display = 'none';
+    return;
+  }
+  
+  const pendingCount = window.allShopOrders.filter(o => o.status === 'pending').length;
+  
+  if (pendingCount > 0) {
+    badge.textContent = pendingCount > 99 ? '99+' : pendingCount;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/**
+ * Update Mobile Cart Badge (Customer)
+ */
+function updateMobileCartBadge() {
+  const badge = document.getElementById('mobileCartBadge');
+  if (!badge) return;
+  
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  
+  if (totalItems > 0) {
+    badge.textContent = totalItems > 99 ? '99+' : totalItems;
+    badge.style.display = 'block';
+  } else {
+    badge.style.display = 'none';
+  }
+}
+
+/**
+ * Handle Window Resize
+ */
+function handleMobileNavResize() {
+  if (!window.currentUser) {
+    hideMobileBottomNav();
+    hideShopownerMobileBottomNav();
+    return;
+  }
+  
+  if (isMobileDevice()) {
+    if (window.currentUser.role === 'customer') {
+      showMobileBottomNav();
+      hideShopownerMobileBottomNav();
+    } else if (window.currentUser.role === 'shopowner') {
+      hideMobileBottomNav();
+      showShopownerMobileBottomNav();
+    }
+  } else {
+    hideMobileBottomNav();
+    hideShopownerMobileBottomNav();
+  }
+}
+
+// Add resize listener
+window.addEventListener('resize', handleMobileNavResize);
+
+// Make functions global
+window.initializeMobileBottomNav = initializeMobileBottomNav;
+window.showMobileBottomNav = showMobileBottomNav;
+window.hideMobileBottomNav = hideMobileBottomNav;
+window.showShopownerMobileBottomNav = showShopownerMobileBottomNav;
+window.hideShopownerMobileBottomNav = hideShopownerMobileBottomNav;
+window.switchMobileTab = switchMobileTab;
+window.switchShopownerMobileTab = switchShopownerMobileTab;
+window.updateMobileCartBadge = updateMobileCartBadge;
+window.updateMobileOrdersBadge = updateMobileOrdersBadge;
+window.isMobileDevice = isMobileDevice;
+window.loadShopOrders = loadShopOrders;
+window.filterShopOrders = filterShopOrders;
+window.viewShopOrderDetails = viewShopOrderDetails;
+
+console.log('✅ Mobile bottom navigation system loaded (Customer + Shopowner)');
+
+
+/**
+ * Accept Order (Any shopowner can accept any order)
+ */
+ async function acceptOrder(orderId, shopId) {
+  console.log('✅ Accepting order:', orderId, 'from shop:', shopId);
+  
+  // ✅ Confirm action
+  if (!confirm('Accept this order?\n\nThis will mark the order as "Accepted" and notify the customer.')) {
+    return;
+  }
+  
+  // ✅ Find order
+  const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+  
+  if (!order) {
+    alert('❌ Order not found!');
+    return;
+  }
+  
+  // ✅ Check if already accepted
+  if (order.status !== 'pending') {
+    alert(`⚠️ This order is already ${order.status}!`);
+    return;
+  }
+  
+  // ✅ Show loading on button
+  const acceptBtn = document.getElementById(`acceptBtn_${orderId}`);
+  if (acceptBtn) {
+    acceptBtn.disabled = true;
+    acceptBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Accepting...';
+  }
+  
+  try {
+    const { doc, updateDoc, serverTimestamp } = window.firebaseImports;
+    
+    console.log('📝 Updating order in Firebase...');
+    console.log('  - Order ID:', orderId);
+    console.log('  - Shop ID:', shopId);
+    
+    // ✅ Update order status in Firebase
+    const orderRef = doc(window.db, 'shops', shopId, 'orders', orderId);
+    
+    await updateDoc(orderRef, {
+      status: 'accepted',
+      acceptedAt: serverTimestamp(),
+      acceptedBy: window.currentUser.uid,
+      acceptedByName: window.currentUser.displayName || window.currentUser.email || 'Shopowner',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order accepted successfully!');
+    
+    // ✅ Show success message
+    if (acceptBtn) {
+      acceptBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Accepted!';
+      acceptBtn.classList.remove('btn-success');
+      acceptBtn.classList.add('btn-secondary');
+      
+      setTimeout(() => {
+        acceptBtn.style.display = 'none';
+      }, 1500);
+    }
+    
+    // ✅ Update local order object
+    order.status = 'accepted';
+    order.acceptedAt = new Date().toISOString();
+    order.acceptedBy = window.currentUser.uid;
+    order.acceptedByName = window.currentUser.displayName || window.currentUser.email || 'Shopowner';
+    
+    // ✅ Refresh stats
+    updateShopOrderStats(window.allShopOrders);
+    
+    // ✅ Update badge
+    updateMobileOrdersBadge();
+    
+    // ✅ Re-render orders after 1.5 seconds
+    setTimeout(() => {
+      renderShopOrders(window.allShopOrders);
+    }, 1500);
+    
+    // ✅ Show success alert
+    alert('✅ Order Accepted!\n\nOrder has been marked as accepted. Customer will be notified.');
+    
+  } catch (error) {
+    console.error('❌ Error accepting order:', error);
+    
+    // ✅ Show error message
+    alert(`❌ Error accepting order:\n\n${error.message}`);
+    
+    // ✅ Reset button
+    if (acceptBtn) {
+      acceptBtn.disabled = false;
+      acceptBtn.innerHTML = '<i class="bi bi-check-circle"></i> Accept';
+    }
+  }
+}
+
+// Make it global
+window.acceptOrder = acceptOrder;
+
+console.log('✅ Accept order function loaded');
 
 
 </script>
