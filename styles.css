@@ -911,114 +911,358 @@
     font-size: 1rem;
   }
 }
-
 /* ==========================================
-   CHECKOUT & ORDERS STYLES
+   CHECKOUT MODAL STYLES
    ========================================== */
 
-/* Step Indicator */
-.step-circle {
-  width: 40px;
-  height: 40px;
-  border-radius: 50%;
-  background: #e0e0e0;
-  color: #999;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-weight: 700;
-  font-size: 1.1rem;
-  margin-bottom: 8px;
-  transition: all 0.3s;
+/* Input focus effect */
+#checkoutForm .form-control:focus {
+  border-color: #25D366;
+  box-shadow: 0 0 0 0.2rem rgba(37, 211, 102, 0.25);
 }
 
-.step-circle.active {
-  background: #25D366;
-  color: white;
+/* Invalid input styling */
+#checkoutForm .form-control.is-invalid {
+  border-color: #dc3545;
+  padding-right: calc(1.5em + 0.75rem);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 12 12' width='12' height='12' fill='none' stroke='%23dc3545'%3e%3ccircle cx='6' cy='6' r='4.5'/%3e%3cpath stroke-linejoin='round' d='M5.8 3.6h.4L6 6.5z'/%3e%3ccircle cx='6' cy='8.2' r='.6' fill='%23dc3545' stroke='none'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
 
-.step-circle.completed {
-  background: #128C7E;
-  color: white;
+/* Valid input styling */
+#checkoutForm .form-control.is-valid {
+  border-color: #28a745;
+  padding-right: calc(1.5em + 0.75rem);
+  background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 8 8'%3e%3cpath fill='%2328a745' d='M2.3 6.73L.6 4.53c-.4-1.04.46-1.4 1.1-.8l1.1 1.4 3.4-3.8c.6-.63 1.6-.27 1.2.7l-4 4.6c-.43.5-.8.4-1.1.1z'/%3e%3c/svg%3e");
+  background-repeat: no-repeat;
+  background-position: right calc(0.375em + 0.1875rem) center;
+  background-size: calc(0.75em + 0.375rem) calc(0.75em + 0.375rem);
 }
 
-/* Order Card */
-.order-card {
-  background: white;
-  border-radius: 12px;
-  padding: 20px;
-  margin-bottom: 15px;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
-  transition: all 0.2s;
-  border-left: 4px solid #e0e0e0;
-}
-
-.order-card:hover {
-  box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-  transform: translateY(-2px);
-}
-
-.order-card.pending {
-  border-left-color: #ff9800;
-}
-
-.order-card.accepted {
-  border-left-color: #25D366;
-}
-
-.order-card.delivered {
-  border-left-color: #2196f3;
-}
-
-/* Status Badge */
-.status-badge {
-  display: inline-block;
-  padding: 6px 12px;
-  border-radius: 20px;
-  font-size: 0.85rem;
-  font-weight: 600;
-  text-transform: uppercase;
-}
-
-.status-badge.pending {
-  background: #fff3e0;
-  color: #e65100;
-}
-
-.status-badge.accepted {
-  background: #e8f5e9;
-  color: #2e7d32;
-}
-
-.status-badge.delivered {
-  background: #e3f2fd;
-  color: #1565c0;
-}
-
-/* Notification Badge on Shop Card */
-.shop-order-badge {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  background: #ff5252;
-  color: white;
-  border-radius: 50%;
-  width: 24px;
-  height: 24px;
+/* Checkout item card */
+.checkout-item {
   display: flex;
+  justify-content: space-between;
   align-items: center;
-  justify-content: center;
-  font-size: 0.75rem;
-  font-weight: 700;
-  box-shadow: 0 2px 8px rgba(255, 82, 82, 0.4);
-  animation: pulse 2s infinite;
+  padding: 10px 0;
+  border-bottom: 1px solid #f0f0f0;
 }
 
-@keyframes pulse {
-  0%, 100% {
-    transform: scale(1);
+.checkout-item:last-child {
+  border-bottom: none;
+}
+
+.checkout-item-details {
+  flex: 1;
+}
+
+.checkout-item-name {
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 3px;
+}
+
+.checkout-item-meta {
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.checkout-item-price {
+  font-weight: 700;
+  color: #25D366;
+  font-size: 1.1rem;
+}
+
+/* ==========================================
+   MY ORDERS PAGE STYLES
+   ========================================== */
+
+   .page-view {
+    display: none;
+    min-height: 100vh;
+    background: #f5f5f5;
   }
-  50% {
+  
+  .page-view.active {
+    display: block;
+  }
+  
+  .page-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 15px 20px;
+    background: white;
+    border-bottom: 1px solid #e0e0e0;
+  }
+  
+  .back-btn {
+    background: #f0f0f0;
+    border: none;
+    border-radius: 8px;
+    padding: 8px 15px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .back-btn:hover {
+    background: #e0e0e0;
+    transform: translateX(-3px);
+  }
+  
+  /* Order Card */
+  .order-card {
+    background: white;
+    border-radius: 12px;
+    padding: 15px;
+    margin-bottom: 15px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+    cursor: pointer;
+    transition: all 0.2s;
+  }
+  
+  .order-card:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+    transform: translateY(-2px);
+  }
+  
+  .order-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 12px;
+  }
+  
+  .order-id {
+    font-weight: 700;
+    font-size: 1.1rem;
+    color: #333;
+    margin-bottom: 3px;
+  }
+  
+  .order-shop {
+    font-size: 0.9rem;
+    color: #666;
+  }
+  
+  .order-body {
+    margin-bottom: 12px;
+    padding: 10px 0;
+    border-top: 1px solid #f0f0f0;
+    border-bottom: 1px solid #f0f0f0;
+  }
+  
+  .order-items-summary,
+  .order-date,
+  .order-delivery-time {
+    font-size: 0.9rem;
+    color: #666;
+    margin-bottom: 5px;
+  }
+  
+  .order-delivery-time {
+    color: #25D366;
+    font-weight: 600;
+  }
+  
+  .order-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  
+  .order-total {
+    font-size: 1.1rem;
+  }
+  
+  .order-total strong {
+    color: #25D366;
+    font-size: 1.3rem;
+  }
+  
+  /* Filter Buttons */
+  .order-filter-btn {
+    transition: all 0.2s;
+  }
+  
+  .order-filter-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+  }
+  
+  .order-filter-btn.active {
+    background: #25D366 !important;
+    color: white !important;
+    border-color: #25D366 !important;
+  }
+  
+  /* Responsive */
+  @media (max-width: 768px) {
+    .order-card {
+      padding: 12px;
+    }
+    
+    .order-id {
+      font-size: 1rem;
+    }
+    
+    .order-total strong {
+      font-size: 1.1rem;
+    }
+  }
+
+  /* ✅ Checkout Modal - Ensure it's above mini-cart */
+#checkoutModal {
+  z-index: 10000 !important;
+}
+
+#checkoutModal .modal-backdrop {
+  z-index: 9999 !important;
+}
+
+/* ✅ Mini Cart Footer */
+#miniCartFooter {
+  z-index: 9998 !important; /* Below modal */
+}
+
+/* ✅ Hide mini-cart when modal is open */
+body.modal-open #miniCartFooter {
+  display: none !important;
+}
+
+/* ==========================================
+   MOBILE BOTTOM NAVIGATION (CUSTOMERS ONLY)
+   ========================================== */
+
+   .mobile-bottom-nav {
+    position: fixed;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    height: 65px;
+    background: white;
+    border-top: 1px solid #e0e0e0;
+    display: flex;
+    justify-content: space-around;
+    align-items: center;
+    z-index: 9999;
+    box-shadow: 0 -2px 10px rgba(0, 0, 0, 0.1);
+  }
+  
+  .nav-tab {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 8px 0;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    color: #999;
+    font-size: 0.75rem;
+    font-weight: 500;
+    position: relative;
+  }
+  
+  .nav-tab i {
+    font-size: 1.5rem;
+    margin-bottom: 4px;
+    transition: all 0.2s ease;
+  }
+  
+  .nav-tab span {
+    font-size: 0.7rem;
+    transition: all 0.2s ease;
+  }
+  
+  /* Active Tab */
+  .nav-tab.active {
+    color: #25D366;
+  }
+  
+  .nav-tab.active i {
     transform: scale(1.1);
+  }
+  
+  /* Tap Effect */
+  .nav-tab:active {
+    transform: scale(0.95);
+    background: rgba(37, 211, 102, 0.05);
+  }
+  
+  /* Cart Badge */
+  .mobile-cart-badge {
+    position: absolute;
+    top: -8px;
+    right: -10px;
+    background: #dc3545;
+    color: white;
+    border-radius: 10px;
+    padding: 2px 6px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    min-width: 18px;
+    text-align: center;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
+  }
+  
+  /* Add padding to main content when bottom nav is visible */
+  .mobile-bottom-nav-active {
+    padding-bottom: 75px !important;
+  }
+  
+  /* Hide bottom nav on desktop */
+  @media (min-width: 768px) {
+    .mobile-bottom-nav {
+      display: none !important;
+    }
+  }
+  
+  /* Mobile-specific adjustments */
+  @media (max-width: 767px) {
+    /* Hide desktop navbar for customers on mobile */
+    body.mobile-customer-view #mainNavbar,
+    body.mobile-customer-view #mainAppNavbar,
+    body.mobile-customer-view .navbar {
+      display: none !important;
+    }
+    
+    /* Hide sidebar toggle for customers on mobile */
+    body.mobile-customer-view #sidebarToggleBtn {
+      display: none !important;
+    }
+    
+    /* Hide mini cart footer on mobile (bottom nav replaces it) */
+    body.mobile-customer-view #miniCartFooter {
+      display: none !important;
+    }
+    
+    /* Adjust main content padding */
+    body.mobile-customer-view .main-content,
+    body.mobile-customer-view #mainApp {
+      padding-bottom: 75px !important;
+      padding-top: 10px !important;
+    }
+  }
+
+  
+  /* Mobile Shopowner View */
+@media (max-width: 767px) {
+  body.mobile-shopowner-view #mainNavbar,
+  body.mobile-shopowner-view #mainAppNavbar {
+    display: none !important;
+  }
+  
+  body.mobile-shopowner-view #sidebarToggleBtn {
+    display: none !important;
+  }
+  
+  body.mobile-shopowner-view .main-content,
+  body.mobile-shopowner-view #mainApp {
+    padding-bottom: 75px !important;
+    padding-top: 10px !important;
   }
 }
