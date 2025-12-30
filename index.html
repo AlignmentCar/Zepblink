@@ -2866,9 +2866,8 @@ function renderShopInfo(shop) {
     `;
   }
 }
-
 /**
- * Render Shop Products (UPDATED - Edit button for all shopowners)
+ * Render Shop Products (UPDATED - Edit button for all shopowners + Remove on minus)
  */
  function renderShopProducts(products) {
   const productsGrid = document.getElementById('shopProductsGrid');
@@ -2888,7 +2887,7 @@ function renderShopInfo(shop) {
   productsGrid.style.display = 'flex';
   if (emptyState) emptyState.style.display = 'none';
   
-  // ✅ UPDATED: Check if user is ANY shopowner (not just shop owner)
+  // ✅ Check if user is ANY shopowner (not just shop owner)
   const isShopowner = window.currentUser && window.currentUser.role === 'shopowner';
   
   console.log('📦 Rendering products:');
@@ -2981,19 +2980,49 @@ function renderShopInfo(shop) {
               <!-- ✅ CART BUTTON (CUSTOMERS ONLY) -->
               <div id="cartBtn_${product.id}">
                 ${inCart ? `
-                  <!-- Quantity Stepper -->
+                  <!-- ✅ UPDATED: Quantity Stepper (No disabled, red trash when qty=1) -->
                   <div class="quantity-stepper w-100" style="justify-content: space-between; padding: 10px 15px;">
                     <button 
                       onclick="event.stopPropagation(); updateCartQuantity('${product.id}', -1);" 
-                      ${quantity <= 1 ? 'disabled' : ''}
-                      title="${quantity <= 1 ? 'Remove from cart' : 'Decrease quantity'}">
+                      title="${quantity <= 1 ? 'Remove from cart' : 'Decrease quantity'}"
+                      style="
+                        background: ${quantity <= 1 ? '#dc3545' : '#ffc107'};
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        width: 36px;
+                        height: 36px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: pointer;
+                        font-size: 1rem;
+                        transition: all 0.2s;
+                      "
+                      onmouseover="this.style.transform='scale(1.1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'"
+                      onmouseout="this.style.transform='scale(1)'; this.style.boxShadow='none'">
                       <i class="bi bi-${quantity <= 1 ? 'trash' : 'dash'}"></i>
                     </button>
                     <span style="font-size: 1.1rem; font-weight: 600;">${quantity}</span>
                     <button 
                       onclick="event.stopPropagation(); updateCartQuantity('${product.id}', 1);" 
                       ${quantity >= stock ? 'disabled' : ''}
-                      title="${quantity >= stock ? 'Stock limit reached' : 'Increase quantity'}">
+                      title="${quantity >= stock ? 'Stock limit reached' : 'Increase quantity'}"
+                      style="
+                        background: ${quantity >= stock ? '#ccc' : '#25D366'};
+                        color: white;
+                        border: none;
+                        border-radius: 6px;
+                        width: 36px;
+                        height: 36px;
+                        display: flex;
+                        align-items: center;
+                        justify-content: center;
+                        cursor: ${quantity >= stock ? 'not-allowed' : 'pointer'};
+                        font-size: 1rem;
+                        transition: all 0.2s;
+                      "
+                      ${quantity < stock ? "onmouseover=\"this.style.transform='scale(1.1)'; this.style.boxShadow='0 2px 8px rgba(0,0,0,0.2)'\" onmouseout=\"this.style.transform='scale(1)'; this.style.boxShadow='none'\"" : ''}>
                       <i class="bi bi-plus"></i>
                     </button>
                   </div>
@@ -4000,11 +4029,10 @@ async function loadFeaturedProducts() {
     if (emptyDiv) emptyDiv.style.display = 'block';
   }
 }
-
 /**
- * Render Featured Products
+ * Render Featured Products (UPDATED - Remove on minus when qty=1)
  */
-function renderFeaturedProducts() {
+ function renderFeaturedProducts() {
   const container = document.getElementById('featuredProductsContainer');
   if (!container) return;
   
@@ -4064,13 +4092,47 @@ function renderFeaturedProducts() {
               <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹${formatPrice(price)}</span>
               
               ${inCart ? `
-                <!-- Quantity Stepper (if in cart) -->
-                <div class="quantity-stepper" style="transform: scale(0.85);">
-                  <button onclick="event.stopPropagation(); updateCartQuantity('${product.id}', -1)" ${quantity <= 1 ? 'disabled' : ''}>
-                    <i class="bi bi-dash"></i>
+                <!-- ✅ UPDATED: Quantity Stepper (No disabled, red trash when qty=1) -->
+                <div class="quantity-stepper" style="transform: scale(0.85); display: flex; gap: 8px; align-items: center;">
+                  <button 
+                    onclick="event.stopPropagation(); updateCartQuantity('${product.id}', -1)" 
+                    title="${quantity <= 1 ? 'Remove from cart' : 'Decrease quantity'}"
+                    style="
+                      background: ${quantity <= 1 ? '#dc3545' : '#ffc107'};
+                      color: white;
+                      border: none;
+                      border-radius: 6px;
+                      width: 32px;
+                      height: 32px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      cursor: pointer;
+                      transition: all 0.2s;
+                    "
+                    onmouseover="this.style.transform='scale(1.1)'"
+                    onmouseout="this.style.transform='scale(1)'">
+                    <i class="bi bi-${quantity <= 1 ? 'trash' : 'dash'}"></i>
                   </button>
-                  <span>${quantity}</span>
-                  <button onclick="event.stopPropagation(); updateCartQuantity('${product.id}', 1)" ${quantity >= stock ? 'disabled' : ''}>
+                  <span style="font-weight: 600; min-width: 20px; text-align: center;">${quantity}</span>
+                  <button 
+                    onclick="event.stopPropagation(); updateCartQuantity('${product.id}', 1)" 
+                    ${quantity >= stock ? 'disabled' : ''}
+                    title="${quantity >= stock ? 'Stock limit reached' : 'Increase quantity'}"
+                    style="
+                      background: ${quantity >= stock ? '#ccc' : '#25D366'};
+                      color: white;
+                      border: none;
+                      border-radius: 6px;
+                      width: 32px;
+                      height: 32px;
+                      display: flex;
+                      align-items: center;
+                      justify-content: center;
+                      cursor: ${quantity >= stock ? 'not-allowed' : 'pointer'};
+                      transition: all 0.2s;
+                    "
+                    ${quantity < stock ? "onmouseover=\"this.style.transform='scale(1.1)'\" onmouseout=\"this.style.transform='scale(1)'\"" : ''}>
                     <i class="bi bi-plus"></i>
                   </button>
                 </div>
@@ -4095,6 +4157,7 @@ function renderFeaturedProducts() {
   container.innerHTML = html;
   console.log('✅ Featured products rendered');
 }
+
 
 /**
  * Add to Cart from Featured Products
