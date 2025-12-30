@@ -4904,8 +4904,9 @@ function updateShopOrderStats(orders) {
   
   console.log('✅ Stats updated');
 }
+
 /**
- * Render Shop Orders (UPDATED with Accept button)
+ * Render Shop Orders (UPDATED with Accept + Delivered buttons)
  */
  function renderShopOrders(orders) {
   console.log('🎨 Rendering', orders.length, 'shop orders');
@@ -4952,8 +4953,10 @@ function updateShopOrderStats(orders) {
       }
     }
     
-    // ✅ Check if order is pending (can be accepted)
+    // ✅ Check order status for button display
     const isPending = order.status === 'pending';
+    const canDeliver = ['accepted', 'preparing', 'ready'].includes(order.status);
+    const isDelivered = order.status === 'delivered';
     
     html += `
       <div class="card mb-2" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.06);">
@@ -5006,6 +5009,18 @@ function updateShopOrderStats(orders) {
                   <i class="bi bi-check-circle"></i> Accept
                 </button>
               ` : ''}
+              ${canDeliver ? `
+                <!-- ✅ DELIVERED BUTTON (For accepted/preparing/ready orders) -->
+                <button 
+                  class="btn btn-sm btn-primary" 
+                  onclick="deliverOrder('${order.id}', '${order.shopId || ''}')" 
+                  style="border-radius: 6px; font-size: 0.8rem; padding: 4px 12px; white-space: nowrap; background: #28a745; border-color: #28a745;"
+                  id="deliverBtn_${order.id}"
+                  onmouseover="this.style.background='#218838'"
+                  onmouseout="this.style.background='#28a745'">
+                  <i class="bi bi-check-circle-fill"></i> Delivered
+                </button>
+              ` : ''}
               <!-- VIEW BUTTON -->
               <button 
                 class="btn btn-sm btn-primary" 
@@ -5024,7 +5039,6 @@ function updateShopOrderStats(orders) {
   container.innerHTML = html;
   console.log('✅ Rendered', orders.length, 'orders with action buttons');
 }
-
 
 
 
@@ -5048,8 +5062,9 @@ function filterShopOrders(status) {
     console.log('✅ Showing', filtered.length, 'orders with status:', status);
   }
 }
+
 /**
- * View Shop Order Details (UPDATED with Accept button in modal)
+ * View Shop Order Details (UPDATED with Accept + Delivered buttons in modal)
  */
  function viewShopOrderDetails(orderId) {
   console.log('👀 Viewing detailed order:', orderId);
@@ -5110,7 +5125,7 @@ function filterShopOrders(status) {
     itemsHtml = '<p class="text-muted">No items</p>';
   }
   
-  // Build modal content
+  // Build modal content (same as before)
   const modalBody = document.getElementById('shopOrderDetailsBody');
   if (!modalBody) {
     console.error('Modal body not found');
@@ -5271,8 +5286,23 @@ function filterShopOrders(status) {
           <i class="bi bi-check-circle"></i> Accept Order
         </button>
       `;
+    } else if (['accepted', 'preparing', 'ready'].includes(order.status)) {
+      // Show Delivered button for accepted/preparing/ready orders
+      modalFooter.innerHTML = `
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
+          <i class="bi bi-x-circle"></i> Close
+        </button>
+        <button 
+          type="button" 
+          class="btn btn-success" 
+          onclick="deliverOrderFromModal('${order.id}', '${order.shopId || ''}')" 
+          style="border-radius: 8px; background: #28a745; border-color: #28a745;"
+          id="modalDeliverBtn">
+          <i class="bi bi-check-circle-fill"></i> Mark as Delivered
+        </button>
+      `;
     } else {
-      // Show status badge for non-pending orders
+      // Show status badge for delivered/cancelled orders
       modalFooter.innerHTML = `
         <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px;">
           <i class="bi bi-x-circle"></i> Close
@@ -5293,6 +5323,102 @@ function filterShopOrders(status) {
   
   console.log('✅ Order details modal displayed');
 }
+
+/**
+ * Deliver Order from Modal (with modal close on success)
+ */
+ async function deliverOrderFromModal(orderId, shopId) {
+  console.log('🚚 Marking order as delivered from modal:', orderId);
+  
+  // Get the modal button
+  const modalDeliverBtn = document.getElementById('modalDeliverBtn');
+  
+  if (modalDeliverBtn) {
+    modalDeliverBtn.disabled = true;
+    modalDeliverBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+  }
+  
+  try {
+    const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+    
+    if (!order) {
+      alert('❌ Order not found!');
+      return;
+    }
+    
+    if (order.status === 'delivered') {
+      alert('⚠️ This order is already delivered!');
+      return;
+    }
+    
+    if (!['accepted', 'preparing', 'ready'].includes(order.status)) {
+      alert(`⚠️ Cannot deliver this order!\n\nCurrent status: ${order.status}`);
+      return;
+    }
+    
+    const { doc, updateDoc, serverTimestamp } = window.firebaseImports;
+    
+    const orderRef = doc(window.db, 'shops', shopId, 'orders', orderId);
+    
+    await updateDoc(orderRef, {
+      status: 'delivered',
+      deliveredAt: serverTimestamp(),
+      deliveredBy: window.currentUser.uid,
+      deliveredByName: window.currentUser.displayName || window.currentUser.email || 'Shopowner',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order marked as delivered successfully!');
+    
+    // Update button
+    if (modalDeliverBtn) {
+      modalDeliverBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Delivered!';
+      modalDeliverBtn.style.background = '#6c757d';
+      modalDeliverBtn.style.borderColor = '#6c757d';
+    }
+    
+    // Update local order
+    order.status = 'delivered';
+    order.deliveredAt = new Date().toISOString();
+    order.deliveredBy = window.currentUser.uid;
+    order.deliveredByName = window.currentUser.displayName || window.currentUser.email || 'Shopowner';
+    
+    // Update stats
+    updateShopOrderStats(window.allShopOrders);
+    updateMobileOrdersBadge();
+    
+    // Re-render orders
+    setTimeout(() => {
+      renderShopOrders(window.allShopOrders);
+    }, 1000);
+    
+    // Show success message
+    alert('✅ Order Delivered!\n\nOrder has been marked as delivered.');
+    
+    // Close modal after 1 second
+    setTimeout(() => {
+      const modal = bootstrap.Modal.getInstance(document.getElementById('shopOrderDetailsModal'));
+      if (modal) modal.hide();
+    }, 1000);
+    
+  } catch (error) {
+    console.error('❌ Error delivering order:', error);
+    alert(`❌ Error delivering order:\n\n${error.message}`);
+    
+    if (modalDeliverBtn) {
+      modalDeliverBtn.disabled = false;
+      modalDeliverBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Mark as Delivered';
+    }
+  }
+}
+
+// Make functions global
+window.viewShopOrderDetails = viewShopOrderDetails;
+window.acceptOrderFromModal = acceptOrderFromModal;
+window.deliverOrderFromModal = deliverOrderFromModal;
+
+console.log('✅ Order details modal with Accept + Delivered buttons loaded');
+
 
 /**
  * Accept Order from Modal (with modal close on success)
@@ -5653,6 +5779,117 @@ console.log('✅ Mobile bottom navigation system loaded (Customer + Shopowner)')
 window.acceptOrder = acceptOrder;
 
 console.log('✅ Accept order function loaded');
+
+
+
+/**
+ * Deliver Order (Mark order as delivered)
+ */
+ async function deliverOrder(orderId, shopId) {
+  console.log('🚚 Marking order as delivered:', orderId, 'from shop:', shopId);
+  
+  // ✅ Confirm action
+  if (!confirm('Mark this order as Delivered?\n\nThis will complete the order and notify the customer.')) {
+    return;
+  }
+  
+  // ✅ Find order
+  const order = window.allShopOrders ? window.allShopOrders.find(o => o.id === orderId) : null;
+  
+  if (!order) {
+    alert('❌ Order not found!');
+    return;
+  }
+  
+  // ✅ Check if already delivered
+  if (order.status === 'delivered') {
+    alert('⚠️ This order is already delivered!');
+    return;
+  }
+  
+  // ✅ Check if order can be delivered (must be accepted first)
+  if (!['accepted', 'preparing', 'ready'].includes(order.status)) {
+    alert(`⚠️ Cannot deliver this order!\n\nCurrent status: ${order.status}\n\nOnly accepted orders can be marked as delivered.`);
+    return;
+  }
+  
+  // ✅ Show loading on button
+  const deliverBtn = document.getElementById(`deliverBtn_${orderId}`);
+  if (deliverBtn) {
+    deliverBtn.disabled = true;
+    deliverBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-1"></span>Updating...';
+  }
+  
+  try {
+    const { doc, updateDoc, serverTimestamp } = window.firebaseImports;
+    
+    console.log('📝 Updating order in Firebase...');
+    console.log('  - Order ID:', orderId);
+    console.log('  - Shop ID:', shopId);
+    console.log('  - Status: delivered');
+    
+    // ✅ Update order status in Firebase
+    const orderRef = doc(window.db, 'shops', shopId, 'orders', orderId);
+    
+    await updateDoc(orderRef, {
+      status: 'delivered',
+      deliveredAt: serverTimestamp(),
+      deliveredBy: window.currentUser.uid,
+      deliveredByName: window.currentUser.displayName || window.currentUser.email || 'Shopowner',
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order marked as delivered successfully!');
+    
+    // ✅ Show success message
+    if (deliverBtn) {
+      deliverBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Delivered!';
+      deliverBtn.style.background = '#6c757d';
+      deliverBtn.style.borderColor = '#6c757d';
+      
+      setTimeout(() => {
+        deliverBtn.style.display = 'none';
+      }, 1500);
+    }
+    
+    // ✅ Update local order object
+    order.status = 'delivered';
+    order.deliveredAt = new Date().toISOString();
+    order.deliveredBy = window.currentUser.uid;
+    order.deliveredByName = window.currentUser.displayName || window.currentUser.email || 'Shopowner';
+    
+    // ✅ Refresh stats
+    updateShopOrderStats(window.allShopOrders);
+    
+    // ✅ Update badge
+    updateMobileOrdersBadge();
+    
+    // ✅ Re-render orders after 1.5 seconds
+    setTimeout(() => {
+      renderShopOrders(window.allShopOrders);
+    }, 1500);
+    
+    // ✅ Show success alert
+    alert('✅ Order Delivered!\n\nOrder has been marked as delivered. Customer will be notified.');
+    
+  } catch (error) {
+    console.error('❌ Error marking order as delivered:', error);
+    
+    // ✅ Show error message
+    alert(`❌ Error delivering order:\n\n${error.message}`);
+    
+    // ✅ Reset button
+    if (deliverBtn) {
+      deliverBtn.disabled = false;
+      deliverBtn.innerHTML = '<i class="bi bi-check-circle-fill"></i> Delivered';
+    }
+  }
+}
+
+// Make it global
+window.deliverOrder = deliverOrder;
+
+console.log('✅ Deliver order function loaded');
 
 
 </script>
