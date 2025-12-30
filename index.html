@@ -25,34 +25,36 @@
         getAuth,
         signInWithPopup,
         signInWithEmailAndPassword,
+        signInAnonymously,  // ✅ ADDED
         GoogleAuthProvider,
         onAuthStateChanged,
         signOut
       } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js';
       import {
-  getFirestore,
-  collection,
-  doc,
-  getDoc,
-  getDocs,
-  setDoc,
-  addDoc,
-  updateDoc,
-  query,
-  where,
-  serverTimestamp
-} from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
+        getFirestore,
+        collection,
+        collectionGroup,  // ✅ ADDED
+        doc,
+        getDoc,
+        getDocs,
+        setDoc,
+        addDoc,
+        updateDoc,
+        deleteDoc,  // ✅ ADDED
+        query,
+        where,
+        orderBy,  // ✅ ADDED
+        serverTimestamp
+      } from 'https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js';
 
-
-
-      // ⚠️ REPLACE WITH YOUR FIREBASE CONFIG
+      // Firebase Configuration
       const firebaseConfig = {
         apiKey: "AIzaSyBLt_z6QrkwXwK2l8tDq-n7choUJ6vUJf0",
-  authDomain: "zepblink-3e1c7.firebaseapp.com",
-  projectId: "zepblink-3e1c7",
-  storageBucket: "zepblink-3e1c7.firebasestorage.app",
-  messagingSenderId: "275105674132",
-  appId: "1:275105674132:web:1e0460f6765a580c461581"
+        authDomain: "zepblink-3e1c7.firebaseapp.com",
+        projectId: "zepblink-3e1c7",
+        storageBucket: "zepblink-3e1c7.firebasestorage.app",
+        messagingSenderId: "275105674132",
+        appId: "1:275105674132:web:1e0460f6765a580c461581"
       };
 
       const app = initializeApp(firebaseConfig);
@@ -61,16 +63,36 @@
 
       window.auth = auth;
       window.db = db;
+      
+      // ✅ UPDATED: Added missing imports
       window.firebaseImports = {
-  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, serverTimestamp,
-  signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
-  onAuthStateChanged, signOut
-};
-
+        // Firestore
+        collection, 
+        collectionGroup,  // ✅ ADDED
+        doc, 
+        getDoc, 
+        getDocs, 
+        setDoc, 
+        addDoc, 
+        updateDoc,
+        deleteDoc,  // ✅ ADDED
+        query, 
+        where,
+        orderBy,  // ✅ ADDED
+        serverTimestamp,
+        // Auth
+        signInWithPopup,
+        signInWithEmailAndPassword,
+        signInAnonymously,  // ✅ ADDED
+        GoogleAuthProvider, 
+        onAuthStateChanged,
+        signOut
+      };
 
       console.log("✅ Firebase SDK loaded successfully!");
+      console.log("✅ Available imports:", Object.keys(window.firebaseImports));
 
-  // Auth State Listener (FIXED)
+    // Auth State Listener (UPDATED with address loading)
 onAuthStateChanged(auth, async (user) => {
   if (user) {
     console.log('✅ User signed in:', user.email || user.uid);
@@ -128,13 +150,31 @@ onAuthStateChanged(auth, async (user) => {
 
     // Show main app
     showApp();
+    
+    // ✅ Update sidebar based on user role
+    if (typeof updateSidebarForUser === 'function') {
+      updateSidebarForUser();
+    }
+    
+    // ✅ Update user info in header
+    if (typeof updateUserInfo === 'function') {
+      updateUserInfo();
+    }
+    
+    // ✅ NEW: Load saved delivery address
+    if (typeof loadSavedDeliveryAddress === 'function') {
+      loadSavedDeliveryAddress().catch(err => {
+        console.warn('⚠️ Could not load delivery address:', err);
+      });
+    }
+    
   } else {
     console.log('❌ No user signed in');
     window.currentUser = null;
+    savedDeliveryAddress = null; // ✅ Clear saved address
     showAuthScreen();
   }
 });
-
 
 
       // Check if email is authorized shopowner
@@ -150,16 +190,55 @@ onAuthStateChanged(auth, async (user) => {
 
       window.isAuthorizedShopowner = isAuthorizedShopowner;
 
-      function showApp() {
-  document.getElementById('authScreen').style.display = 'none';
-  document.getElementById('mainApp').style.display = 'block';
-  updateUserInfo();
+   /**
+ * Show Main App (UPDATED with featured products and cart initialization)
+ */
+function showApp() {
+  console.log('📱 Showing main app...');
+  
+  const authScreen = document.getElementById('authScreen');
+  const mainApp = document.getElementById('mainApp');
+  
+  // Hide auth screen
+  if (authScreen) {
+    authScreen.style.display = 'none';
+  }
+  
+  // Show main app
+  if (mainApp) {
+    mainApp.style.display = 'block';
+    mainApp.classList.add('active');
+  }
+  
+  // Update user info in navbar
+  if (typeof updateUserInfo === 'function') {
+    updateUserInfo();
+  }
+  
+  // ✅ Initialize cart from storage
+  if (typeof initializeCart === 'function') {
+    initializeCart();
+  }
   
   // ✅ Load shops after showing app
   setTimeout(() => {
-    loadShopsFromFirestore();
+    if (typeof loadShopsFromFirestore === 'function') {
+      loadShopsFromFirestore();
+    } else if (typeof loadShops === 'function') {
+      loadShops();
+    }
+    
+    // ✅ NEW: Load featured products
+    if (typeof loadFeaturedProducts === 'function') {
+      loadFeaturedProducts();
+    }
   }, 500);
+  
+  console.log('✅ Main app displayed');
 }
+
+// Make it global
+window.showApp = showApp;
 
 
       function showAuthScreen() {
@@ -167,152 +246,142 @@ onAuthStateChanged(auth, async (user) => {
         document.getElementById('mainApp').style.display = 'none';
       }
 
-
       function updateUserInfo() {
-  const userName = document.getElementById('userName');
-  const userEmail = document.getElementById('userEmail');
-  const userEmailDropdown = document.getElementById('userEmailDropdown');
-  const userEmailMobile = document.getElementById('userEmailMobile');
-  const userAvatar = document.getElementById('userAvatar');
-  const userAvatarMobile = document.getElementById('userAvatarMobile');
-  const userRole = document.getElementById('userRole');
-  const userRoleDropdown = document.getElementById('userRoleDropdown');
-  const userRoleDropdownMobile = document.getElementById('userRoleDropdownMobile');
-  const userRoleMobile = document.getElementById('userRoleMobile');
+        const userName = document.getElementById('userName');
+        const userEmail = document.getElementById('userEmail');
+        const userEmailDropdown = document.getElementById('userEmailDropdown');
+        const userEmailMobile = document.getElementById('userEmailMobile');
+        const userAvatar = document.getElementById('userAvatar');
+        const userAvatarMobile = document.getElementById('userAvatarMobile');
+        const userRole = document.getElementById('userRole');
+        const userRoleDropdown = document.getElementById('userRoleDropdown');
+        const userRoleDropdownMobile = document.getElementById('userRoleDropdownMobile');
+        const userRoleMobile = document.getElementById('userRoleMobile');
 
-  if (window.currentUser) {
-    const displayName = window.currentUser.displayName;
-    const email = window.currentUser.email;
-    const role = window.currentUser.role || 'customer';
-    
-    // Update user name
-    if (userName) userName.textContent = displayName;
-    if (userEmail) userEmail.textContent = email;
-    if (userEmailDropdown) userEmailDropdown.textContent = email;
-    if (userEmailMobile) userEmailMobile.textContent = email;
-    
-    // Update avatar
-    const avatarUrl = window.currentUser.photoURL || 
-                     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=25D366&color=fff`;
-    if (userAvatar) userAvatar.src = avatarUrl;
-    if (userAvatarMobile) userAvatarMobile.src = avatarUrl;
-    
-    // Update role badges
-    let roleText = '';
-    let roleColor = '';
-    let roleIcon = '';
-    
-    if (role === 'shopowner') {
-      roleText = '🏪 Shopowner';
-      roleColor = 'background: #ffc107; color: #000;';
-      roleIcon = 'bi-shop';
-    } else if (role === 'customer') {
-      roleText = '🛍️ Customer';
-      roleColor = 'background: #0d6efd; color: white;';
-      roleIcon = 'bi-person';
-    } else {
-      roleText = '👤 Guest';
-      roleColor = 'background: #6c757d; color: white;';
-      roleIcon = 'bi-person-circle';
-    }
-    
-    if (userRole) {
-      userRole.textContent = roleText;
-      userRole.setAttribute('style', `font-size: 0.65rem; padding: 2px 8px; margin-top: 2px; ${roleColor} border-radius: 10px;`);
-    }
-    
-    if (userRoleDropdown) {
-      userRoleDropdown.textContent = roleText;
-      userRoleDropdown.setAttribute('style', `font-size: 0.7rem; ${roleColor} border-radius: 10px; padding: 3px 8px;`);
-    }
-    
-    if (userRoleDropdownMobile) {
-      userRoleDropdownMobile.textContent = roleText;
-      userRoleDropdownMobile.setAttribute('style', `font-size: 0.7rem; ${roleColor} border-radius: 10px; padding: 3px 8px;`);
-    }
-    
-    if (userRoleMobile) {
-      userRoleMobile.textContent = roleText.split(' ')[0]; // Just the emoji
-      userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${roleColor} border-radius: 10px;`);
-    }
-    
-    // ✅ NEW: Show/Hide Register Shop Button based on role
-    const registerShopBtn = document.getElementById('registerShopBtn');
-    const registerShopBtnMobile = document.getElementById('registerShopBtnMobile');
-    
-    if (role === 'shopowner') {
-      // Show Register Shop button for shopowners
-      if (registerShopBtn) {
-        registerShopBtn.classList.remove('d-none');
-        registerShopBtn.style.display = 'block';
+        if (window.currentUser) {
+          const displayName = window.currentUser.displayName;
+          const email = window.currentUser.email;
+          const role = window.currentUser.role || 'customer';
+          
+          // Update user name
+          if (userName) userName.textContent = displayName;
+          if (userEmail) userEmail.textContent = email;
+          if (userEmailDropdown) userEmailDropdown.textContent = email;
+          if (userEmailMobile) userEmailMobile.textContent = email;
+          
+          // Update avatar
+          const avatarUrl = window.currentUser.photoURL || 
+                           `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=25D366&color=fff`;
+          if (userAvatar) userAvatar.src = avatarUrl;
+          if (userAvatarMobile) userAvatarMobile.src = avatarUrl;
+          
+          // Update role badges
+          let roleText = '';
+          let roleColor = '';
+          
+          if (role === 'shopowner') {
+            roleText = '🏪 Shopowner';
+            roleColor = 'background: #ffc107; color: #000;';
+          } else if (role === 'customer') {
+            roleText = '🛍️ Customer';
+            roleColor = 'background: #0d6efd; color: white;';
+          } else {
+            roleText = '👤 Guest';
+            roleColor = 'background: #6c757d; color: white;';
+          }
+          
+          if (userRole) {
+            userRole.textContent = roleText;
+            userRole.setAttribute('style', `font-size: 0.65rem; padding: 2px 8px; margin-top: 2px; ${roleColor} border-radius: 10px;`);
+          }
+          
+          if (userRoleDropdown) {
+            userRoleDropdown.textContent = roleText;
+            userRoleDropdown.setAttribute('style', `font-size: 0.7rem; ${roleColor} border-radius: 10px; padding: 3px 8px;`);
+          }
+          
+          if (userRoleDropdownMobile) {
+            userRoleDropdownMobile.textContent = roleText;
+            userRoleDropdownMobile.setAttribute('style', `font-size: 0.7rem; ${roleColor} border-radius: 10px; padding: 3px 8px;`);
+          }
+          
+          if (userRoleMobile) {
+            userRoleMobile.textContent = roleText.split(' ')[0];
+            userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${roleColor} border-radius: 10px;`);
+          }
+          
+          // Show/Hide Register Shop Button based on role
+          const registerShopBtn = document.getElementById('registerShopBtn');
+          const registerShopBtnMobile = document.getElementById('registerShopBtnMobile');
+          
+          if (role === 'shopowner') {
+            if (registerShopBtn) {
+              registerShopBtn.classList.remove('d-none');
+              registerShopBtn.style.display = 'block';
+            }
+            if (registerShopBtnMobile) {
+              registerShopBtnMobile.style.display = 'block';
+            }
+          } else {
+            if (registerShopBtn) {
+              registerShopBtn.classList.add('d-none');
+              registerShopBtn.style.display = 'none';
+            }
+            if (registerShopBtnMobile) {
+              registerShopBtnMobile.style.display = 'none';
+            }
+          }
+          
+        } else {
+          // Guest mode
+          if (userName) userName.textContent = 'Guest User';
+          if (userEmail) userEmail.textContent = 'guest@ue2shop.local';
+          if (userEmailDropdown) userEmailDropdown.textContent = 'guest@ue2shop.local';
+          if (userEmailMobile) userEmailMobile.textContent = 'guest@ue2shop.local';
+          
+          const guestAvatar = 'https://ui-avatars.com/api/?name=Guest&background=6c757d&color=fff';
+          if (userAvatar) userAvatar.src = guestAvatar;
+          if (userAvatarMobile) userAvatarMobile.src = guestAvatar;
+          
+          const guestRole = '👤 Guest';
+          const guestStyle = 'background: #6c757d; color: white; border-radius: 10px;';
+          
+          if (userRole) {
+            userRole.textContent = guestRole;
+            userRole.setAttribute('style', `font-size: 0.65rem; padding: 2px 8px; margin-top: 2px; ${guestStyle}`);
+          }
+          if (userRoleDropdown) {
+            userRoleDropdown.textContent = guestRole;
+            userRoleDropdown.setAttribute('style', `font-size: 0.7rem; ${guestStyle} padding: 3px 8px;`);
+          }
+          if (userRoleDropdownMobile) {
+            userRoleDropdownMobile.textContent = guestRole;
+            userRoleDropdownMobile.setAttribute('style', `font-size: 0.7rem; ${guestStyle} padding: 3px 8px;`);
+          }
+          if (userRoleMobile) {
+            userRoleMobile.textContent = '👤';
+            userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${guestStyle}`);
+          }
+          
+          const registerShopBtn = document.getElementById('registerShopBtn');
+          const registerShopBtnMobile = document.getElementById('registerShopBtnMobile');
+          
+          if (registerShopBtn) {
+            registerShopBtn.classList.add('d-none');
+            registerShopBtn.style.display = 'none';
+          }
+          if (registerShopBtnMobile) {
+            registerShopBtnMobile.style.display = 'none';
+          }
+        }
       }
-      if (registerShopBtnMobile) {
-        registerShopBtnMobile.style.display = 'block';
-      }
-      console.log('✅ Register Shop button shown (Shopowner)');
-    } else {
-      // Hide for customers and guests
-      if (registerShopBtn) {
-        registerShopBtn.classList.add('d-none');
-        registerShopBtn.style.display = 'none';
-      }
-      if (registerShopBtnMobile) {
-        registerShopBtnMobile.style.display = 'none';
-      }
-      console.log('ℹ️ Register Shop button hidden (Customer/Guest)');
-    }
-    
-  } else {
-    // Guest mode
-    if (userName) userName.textContent = 'Guest User';
-    if (userEmail) userEmail.textContent = 'guest@ue2shop.local';
-    if (userEmailDropdown) userEmailDropdown.textContent = 'guest@ue2shop.local';
-    if (userEmailMobile) userEmailMobile.textContent = 'guest@ue2shop.local';
-    
-    const guestAvatar = 'https://ui-avatars.com/api/?name=Guest&background=6c757d&color=fff';
-    if (userAvatar) userAvatar.src = guestAvatar;
-    if (userAvatarMobile) userAvatarMobile.src = guestAvatar;
-    
-    const guestRole = '👤 Guest';
-    const guestStyle = 'background: #6c757d; color: white; border-radius: 10px;';
-    
-    if (userRole) {
-      userRole.textContent = guestRole;
-      userRole.setAttribute('style', `font-size: 0.65rem; padding: 2px 8px; margin-top: 2px; ${guestStyle}`);
-    }
-    if (userRoleDropdown) {
-      userRoleDropdown.textContent = guestRole;
-      userRoleDropdown.setAttribute('style', `font-size: 0.7rem; ${guestStyle} padding: 3px 8px;`);
-    }
-    if (userRoleDropdownMobile) {
-      userRoleDropdownMobile.textContent = guestRole;
-      userRoleDropdownMobile.setAttribute('style', `font-size: 0.7rem; ${guestStyle} padding: 3px 8px;`);
-    }
-    if (userRoleMobile) {
-      userRoleMobile.textContent = '👤';
-      userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${guestStyle}`);
-    }
-    
-    // ✅ NEW: Hide Register Shop button for guests
-    const registerShopBtn = document.getElementById('registerShopBtn');
-    const registerShopBtnMobile = document.getElementById('registerShopBtnMobile');
-    
-    if (registerShopBtn) {
-      registerShopBtn.classList.add('d-none');
-      registerShopBtn.style.display = 'none';
-    }
-    if (registerShopBtnMobile) {
-      registerShopBtnMobile.style.display = 'none';
-    }
-  }
-}
-
 
     </script>
 
     <!-- Bootstrap JS -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 </head>
+
 <body>
 
 <!-- ============================================
@@ -470,75 +539,78 @@ onAuthStateChanged(auth, async (user) => {
   <div class="sidebar-overlay" id="sidebarOverlay" onclick="closeSidebar()"></div>
 
   <!-- Sidebar Menu -->
-  <nav class="sidebar-menu" id="sidebarMenu">
-    
-    <!-- Sidebar Header -->
-    <div class="sidebar-header">
-      <i class="bi bi-shop" style="font-size: 32px;"></i>
-      <h4 class="mt-2">UE2 Shop Menu</h4>
-    </div>
-    
-    <!-- Home -->
-    <div class="sidebar-item" onclick="goToHome()">
-      <i class="bi bi-house-door"></i>
-      <span>Home</span>
-    </div>
-    
-    <!-- SHOPPING Section -->
-    <div class="sidebar-section-title">SHOPPING</div>
-    
-    <div class="sidebar-item" onclick="navigateTo('categories')">
-      <i class="bi bi-grid-3x3-gap"></i>
-      <span>Shop by Category</span>
-    </div>
-    
-    <div class="sidebar-item" onclick="navigateTo('shops')">
-      <i class="bi bi-shop-window"></i>
-      <span>All Shops</span>
-    </div>
-    
-    <div class="sidebar-item" onclick="navigateTo('deals')">
-      <i class="bi bi-tag-fill"></i>
-      <span>Deals & Offers</span>
-    </div>
-    
-    <!-- MY ACCOUNT Section -->
-    <div class="sidebar-section-title">MY ACCOUNT</div>
-    
-    <div class="sidebar-item" onclick="navigateTo('orders')">
+<nav class="sidebar-menu" id="sidebarMenu">
+  
+  <!-- Sidebar Header -->
+  <div class="sidebar-header">
+    <i class="bi bi-shop" style="font-size: 32px;"></i>
+    <h4 class="mt-2">UE2 Shop Menu</h4>
+  </div>
+  
+  <!-- Home -->
+  <div class="sidebar-item" onclick="goToHome()">
+    <i class="bi bi-house-door"></i>
+    <span>Home</span>
+  </div>
+  
+  <!-- SHOPPING Section -->
+  <div class="sidebar-section-title">SHOPPING</div>
+  
+  <div class="sidebar-item" onclick="navigateTo('categories')">
+    <i class="bi bi-grid-3x3-gap"></i>
+    <span>Shop by Category</span>
+  </div>
+  
+  <div class="sidebar-item" onclick="navigateTo('shops')">
+    <i class="bi bi-shop-window"></i>
+    <span>All Shops</span>
+  </div>
+  
+  <div class="sidebar-item" onclick="navigateTo('deals')">
+    <i class="bi bi-tag-fill"></i>
+    <span>Deals & Offers</span>
+  </div>
+  
+  <!-- MY ACCOUNT Section -->
+  <div class="sidebar-section-title">MY ACCOUNT</div>
+  
+  <!-- ✅ FIXED: Customer Orders Link -->
+  <div id="myOrdersLink" style="display: none;">
+    <div class="sidebar-item" onclick="navigateToCustomerOrders()">
       <i class="bi bi-bag-check"></i>
       <span>My Orders</span>
     </div>
-    
-    <div class="sidebar-item" onclick="navigateTo('cart')">
-      <i class="bi bi-cart3"></i>
-      <span>Shopping Cart</span>
-    </div>
-    
-    <div class="sidebar-item" onclick="navigateTo('favorites')">
-      <i class="bi bi-heart-fill"></i>
-      <span>Favorites</span>
-    </div>
-    
-    <div class="sidebar-item" onclick="navigateTo('address')">
-      <i class="bi bi-geo-alt-fill"></i>
-      <span>Delivery Address</span>
-    </div>
-    
-    <!-- SETTINGS Section -->
-    <div class="sidebar-section-title">SETTINGS</div>
-    
-    <div class="sidebar-item" onclick="navigateTo('profile')">
-      <i class="bi bi-person-circle"></i>
-      <span>Profile Settings</span>
-    </div>
-    
-    <div class="sidebar-item" onclick="navigateTo('help')">
-      <i class="bi bi-question-circle"></i>
-      <span>Help & Support</span>
-    </div>
-    
-  </nav>
+  </div>
+  
+  <div class="sidebar-item" onclick="navigateTo('cart')">
+    <i class="bi bi-cart3"></i>
+    <span>Shopping Cart</span>
+  </div>
+  
+  <div class="sidebar-item" onclick="navigateTo('favorites')">
+    <i class="bi bi-heart-fill"></i>
+    <span>Favorites</span>
+  </div>
+  
+  <div class="sidebar-item" onclick="navigateTo('address')">
+    <i class="bi bi-geo-alt-fill"></i>
+    <span>Delivery Address</span>
+  </div>
+  
+  <!-- SETTINGS Section -->
+  <div class="sidebar-section-title">SETTINGS</div>
+  
+  <div class="sidebar-item" onclick="navigateTo('profile')">
+    <i class="bi bi-person-circle"></i>
+    <span>Profile Settings</span>
+  </div>
+  
+  <div class="sidebar-item" onclick="navigateTo('help')">
+    <i class="bi bi-question-circle"></i>
+    <span>Help & Support</span>
+  </div>
+  
+</nav>
 
 
   <!-- ✅ NAVBAR - Professional with User Dropdown + Register Shop Button -->
@@ -873,107 +945,50 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
         </div>
       </div>
 
-      <!-- Featured Products Section -->
-      <div class="mb-4">
-        <div class="d-flex justify-content-between align-items-center mb-3">
-          <h3 style="font-weight: 700; color: #333; margin: 0;">
-            <i class="bi bi-star-fill me-2" style="color: #ffc107;"></i>
-            Featured Products
-          </h3>
-          <a href="#" class="text-decoration-none" style="color: #25D366; font-weight: 600; font-size: 0.9rem;">
-            View All <i class="bi bi-arrow-right"></i>
-          </a>
-        </div>
+   <!-- Featured Products Section (UPDATED - Dynamic Loading) -->
+<div class="mb-4" id="featuredProductsSection">
+  <div class="d-flex justify-content-between align-items-center mb-3">
+    <h3 style="font-weight: 700; color: #333; margin: 0;">
+      <i class="bi bi-star-fill me-2" style="color: #ffc107;"></i>
+      Featured Products
+    </h3>
+    <a href="#" onclick="scrollToShops(); return false;" class="text-decoration-none" style="color: #25D366; font-weight: 600; font-size: 0.9rem;">
+      View All Shops <i class="bi bi-arrow-right"></i>
+    </a>
+  </div>
 
-        <div class="row g-3">
-          <!-- Product Card 1 -->
-          <div class="col-md-3 col-6">
-            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
-                <i class="bi bi-box-seam" style="font-size: 3rem; color: #1976d2;"></i>
-              </div>
-              <div class="card-body">
-                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 1</h6>
-                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop A</p>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹299</span>
-                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
-                    <i class="bi bi-cart-plus"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Product Card 2 -->
-          <div class="col-md-3 col-6">
-            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
-                <i class="bi bi-basket" style="font-size: 3rem; color: #7b1fa2;"></i>
-              </div>
-              <div class="card-body">
-                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 2</h6>
-                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop B</p>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹499</span>
-                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
-                    <i class="bi bi-cart-plus"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Product Card 3 -->
-          <div class="col-md-3 col-6">
-            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
-                <i class="bi bi-bag-heart" style="font-size: 3rem; color: #e65100;"></i>
-              </div>
-              <div class="card-body">
-                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 3</h6>
-                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop C</p>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹199</span>
-                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
-                    <i class="bi bi-cart-plus"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <!-- Product Card 4 -->
-          <div class="col-md-3 col-6">
-            <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
-              <div style="background: linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
-                <i class="bi bi-gift" style="font-size: 3rem; color: #2e7d32;"></i>
-              </div>
-              <div class="card-body">
-                <h6 class="mb-2" style="font-weight: 600; color: #333;">Product Name 4</h6>
-                <p class="text-muted mb-2" style="font-size: 0.8rem;">Local Shop D</p>
-                <div class="d-flex justify-content-between align-items-center">
-                  <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹399</span>
-                  <button class="btn btn-sm" style="background: #25D366; color: white; border: none; border-radius: 6px; padding: 4px 12px;">
-                    <i class="bi bi-cart-plus"></i>
-                  </button>
-                </div>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      <!-- Development Notice -->
-      <div class="alert alert-info mt-4" role="alert" style="border-radius: 12px; border: none;">
-        <i class="bi bi-info-circle me-2"></i>
-        <strong>Under Development:</strong> Product listings from local shopowners will be loaded here. Shopping cart and checkout coming soon!
-      </div>
-
+  <!-- Loading State -->
+  <div id="featuredProductsLoading" class="text-center py-5">
+    <div class="spinner-border text-success" role="status" style="width: 3rem; height: 3rem;">
+      <span class="visually-hidden">Loading...</span>
     </div>
-  </main>
+    <p class="mt-3 text-muted">Loading featured products...</p>
+  </div>
+
+  <!-- Products Container (Will be populated dynamically) -->
+  <div class="row g-3" id="featuredProductsContainer" style="display: none;">
+    <!-- Products will be rendered here by JavaScript -->
+  </div>
+
+  <!-- Empty State (if no products found) -->
+  <div id="featuredProductsEmpty" class="text-center py-5" style="display: none;">
+    <i class="bi bi-box-seam" style="font-size: 4rem; color: #ccc;"></i>
+    <h5 class="mt-3 text-muted">No products available yet</h5>
+    <p class="text-muted">Check back soon for featured products from local shops!</p>
+  </div>
+</div>
+
+<!-- Development Notice (UPDATED) -->
+<div class="alert alert-success mt-4" role="alert" style="border-radius: 12px; border: none; border-left: 4px solid #25D366;">
+  <i class="bi bi-check-circle me-2"></i>
+  <strong>Live Shopping:</strong> Browse products from local shops, add to cart, and place orders for delivery in Urban Estate 2!
+</div>
 
 </div>
+</main>
+
+</div>
+
 
 <!-- ============================================
      SHOP PRODUCTS PAGE
@@ -1176,9 +1191,14 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
               <span style="color: #25D366;" id="summaryTotal">₹0</span>
             </div>
             
-            <button class="btn btn-success w-100 mt-3" onclick="proceedToCheckout()" style="border-radius: 10px; padding: 12px; font-weight: 600; font-size: 1.1rem;">
-              <i class="bi bi-check-circle me-2"></i>Proceed to Checkout
-            </button>
+            <!-- Proceed to Checkout Button -->
+<button 
+onclick="proceedToCheckout()" 
+class="btn btn-success btn-lg w-100 mt-3" 
+style="border-radius: 10px; font-weight: 700; padding: 15px; font-size: 1.1rem;">
+<i class="bi bi-credit-card me-2"></i>Proceed to Checkout
+</button>
+
           </div>
         </div>
         
@@ -1229,6 +1249,10 @@ transition: transform 0.3s ease;
 </div>
 
 </div>
+
+<!-- ✅ NEW: Spacer to prevent content from being hidden behind cart -->
+<div id="miniCartSpacer" style="height: 80px; display: none;"></div>
+
 
 <!-- ============================================
      SHOP CONFLICT MODAL
@@ -1418,6 +1442,433 @@ transition: transform 0.3s ease;
       </div>
     </div>
     
+<!-- ============================================
+     CHECKOUT MODAL (CUSTOMERS ONLY) - UPDATED WITH SAVED ADDRESS
+     ============================================ -->
+     <div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false" style="z-index: 10000;">
+      <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
+          
+          <!-- Modal Header -->
+          <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
+            <h5 class="modal-title" style="font-weight: 700;">
+              <i class="bi bi-credit-card me-2"></i>Checkout
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          
+          <!-- Modal Body -->
+          <div class="modal-body p-4">
+            
+            <!-- ==================== DELIVERY ADDRESS SECTION (UPDATED) ==================== -->
+            <div class="mb-4">
+              <div class="d-flex justify-content-between align-items-center mb-3">
+                <h6 style="font-weight: 700; margin: 0; color: #333;">
+                  <i class="bi bi-geo-alt text-danger me-2"></i>Delivery Address
+                </h6>
+                <button 
+                  type="button" 
+                  class="btn btn-sm btn-outline-primary" 
+                  onclick="openDeliveryAddressModal()"
+                  style="border-radius: 6px; font-weight: 600;">
+                  <i class="bi bi-pencil me-1"></i>Edit
+                </button>
+              </div>
+              
+              <!-- Saved Address Display -->
+              <div id="checkoutSavedAddress" class="card" style="border: 2px solid #0d6efd; border-radius: 10px; display: none;">
+                <div class="card-body">
+                  <div class="d-flex align-items-start">
+                    <i class="bi bi-geo-alt-fill text-danger me-3" style="font-size: 1.5rem;"></i>
+                    <div style="flex: 1;">
+                      <p style="margin: 0; font-weight: 600; font-size: 1rem;" id="savedAddressName">Loading...</p>
+                      <p style="margin: 5px 0; color: #666;" id="savedAddressDetails">Loading address...</p>
+                      <p style="margin: 5px 0; color: #666;">
+                        <i class="bi bi-phone me-1"></i>
+                        <span id="savedAddressPhone">Loading...</span>
+                      </p>
+                    </div>
+                    <span class="badge bg-success" style="height: fit-content;">
+                      <i class="bi bi-check-circle me-1"></i>Saved
+                    </span>
+                  </div>
+                </div>
+              </div>
+              
+              <!-- No Address State -->
+              <div id="checkoutNoAddress" class="alert alert-warning" style="border-radius: 10px; display: none;">
+                <i class="bi bi-exclamation-triangle me-2"></i>
+                <strong>No delivery address saved.</strong>
+                <br>
+                <small>Click the "Edit" button above to add your delivery address.</small>
+              </div>
+              
+              <!-- Urban Estate 2 Notice -->
+              <div class="alert alert-info mt-3" style="border-radius: 10px; font-size: 0.9rem;">
+                <i class="bi bi-info-circle me-2"></i>
+                <strong>Delivery Area:</strong> We currently deliver only within <strong>Urban Estate 2, Hisar</strong>
+              </div>
+              
+            </div>
+            
+            <hr>
+            
+            <!-- ==================== ORDER SUMMARY SECTION ==================== -->
+            <div class="mb-4">
+              <h6 style="font-weight: 700; margin-bottom: 15px; color: #333;">
+                <i class="bi bi-receipt text-success me-2"></i>Order Summary
+              </h6>
+              
+              <!-- Cart Items -->
+              <div class="card mb-3" style="border: 1px solid #e0e0e0; border-radius: 10px;">
+                <div class="card-body">
+                  <div id="checkoutItemsList">
+                    <!-- Will be populated by JavaScript -->
+                  </div>
+                </div>
+              </div>
+              
+              <!-- Price Breakdown -->
+              <div class="card" style="border: 1px solid #e0e0e0; border-radius: 10px;">
+                <div class="card-body">
+                  <div class="d-flex justify-content-between mb-2">
+                    <span style="color: #666;">Subtotal (<span id="checkoutItemCount">0</span> items)</span>
+                    <span style="font-weight: 600;">₹<span id="checkoutSubtotal">0</span></span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span style="color: #666;">Delivery Fee</span>
+                    <span style="color: #25D366; font-weight: 600;">FREE</span>
+                  </div>
+                  <div class="d-flex justify-content-between mb-2">
+                    <span style="color: #666;">Tax (GST)</span>
+                    <span style="font-weight: 600;">₹0</span>
+                  </div>
+                  <hr style="margin: 10px 0;">
+                  <div class="d-flex justify-content-between">
+                    <span style="font-size: 1.1rem; font-weight: 700; color: #333;">Total Amount</span>
+                    <span style="font-size: 1.3rem; font-weight: 700; color: #25D366;">₹<span id="checkoutTotal">0</span></span>
+                  </div>
+                </div>
+              </div>
+            </div>
+            
+            <hr>
+            
+            <!-- ==================== PAYMENT METHOD SECTION ==================== -->
+            <div class="mb-3">
+              <h6 style="font-weight: 700; margin-bottom: 15px; color: #333;">
+                <i class="bi bi-cash-coin text-warning me-2"></i>Payment Method
+              </h6>
+              
+              <div class="alert alert-warning" style="border-radius: 10px; border-left: 4px solid #ffc107;">
+                <div class="d-flex align-items-center">
+                  <i class="bi bi-cash-stack" style="font-size: 2rem; margin-right: 15px;"></i>
+                  <div>
+                    <strong>Cash on Delivery (COD)</strong><br>
+                    <small>Pay when you receive your order</small>
+                  </div>
+                </div>
+              </div>
+              
+              <small class="text-muted">
+                <i class="bi bi-info-circle"></i> Currently, only Cash on Delivery is available. Online payment options coming soon!
+              </small>
+            </div>
+            
+          </div>
+          
+          <!-- Modal Footer -->
+          <div class="modal-footer" style="border: none; padding: 20px; background: #f8f9fa;">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; padding: 10px 24px;">
+              <i class="bi bi-x-circle me-2"></i>Cancel
+            </button>
+            <button type="button" class="btn btn-success" onclick="confirmCheckoutOrder()" id="confirmOrderBtn" style="border-radius: 8px; padding: 10px 30px; font-weight: 700; font-size: 1.1rem;">
+              <i class="bi bi-check-circle me-2"></i>Confirm Order
+            </button>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
+
+
+
+
+
+
+
+
+
+
+<!-- ============================================
+     MY ORDERS PAGE (CUSTOMERS ONLY)
+     ============================================ -->
+     <div class="page-view" id="myOrdersPage">
+  
+      <!-- Header -->
+      <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 20px; position: sticky; top: 0; z-index: 100; box-shadow: 0 2px 10px rgba(0,0,0,0.1);">
+        <button class="back-btn" onclick="goBackFromOrders()" style="background: rgba(255,255,255,0.2); border: none; color: white;">
+          <i class="bi bi-arrow-left"></i> Back
+        </button>
+        <h3 style="margin: 0; font-weight: 700;">
+          <i class="bi bi-bag-check"></i> My Orders
+        </h3>
+        <div style="width: 40px;"></div>
+      </div>
+      
+      <!-- Order Statistics -->
+      <div id="orderStats" class="container-fluid" style="padding: 20px; display: none;">
+        <div class="row g-3">
+          <div class="col-6 col-md-3">
+            <div class="card text-center" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <div class="card-body">
+                <i class="bi bi-bag-fill text-primary" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="totalOrdersCount">0</h3>
+                <small class="text-muted">Total Orders</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card text-center" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <div class="card-body">
+                <i class="bi bi-clock-history text-warning" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="pendingOrdersCount">0</h3>
+                <small class="text-muted">Pending</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card text-center" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <div class="card-body">
+                <i class="bi bi-check-circle-fill text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="deliveredOrdersCount">0</h3>
+                <small class="text-muted">Delivered</small>
+              </div>
+            </div>
+          </div>
+          <div class="col-6 col-md-3">
+            <div class="card text-center" style="border-radius: 10px; border: none; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+              <div class="card-body">
+                <i class="bi bi-currency-rupee text-success" style="font-size: 2rem;"></i>
+                <h3 class="mt-2 mb-0" id="totalSpentAmount">₹0</h3>
+                <small class="text-muted">Total Spent</small>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Filters & Search -->
+      <div class="container-fluid" style="padding: 20px; padding-bottom: 10px;">
+        
+        <!-- Search Box -->
+        <input 
+          type="text" 
+          class="form-control mb-3" 
+          id="searchOrdersInput" 
+          placeholder="🔍 Search orders (Order ID, shop name, items...)" 
+          onkeyup="searchOrders(this.value)"
+          style="border-radius: 10px; padding: 12px;"
+        >
+        
+        <!-- Filter Buttons -->
+        <div class="d-flex gap-2 mb-3" style="overflow-x: auto; white-space: nowrap; padding-bottom: 10px;">
+          <button class="order-filter-btn active" data-status="all" onclick="filterOrdersByStatus('all')" style="border-radius: 20px; padding: 8px 20px; border: 2px solid #25D366; background: #25D366; color: white; font-weight: 600; flex-shrink: 0;">
+            All Orders
+          </button>
+          <button class="order-filter-btn" data-status="pending" onclick="filterOrdersByStatus('pending')" style="border-radius: 20px; padding: 8px 20px; border: 2px solid #ffc107; background: white; color: #ffc107; font-weight: 600; flex-shrink: 0;">
+            Pending
+          </button>
+          <button class="order-filter-btn" data-status="accepted" onclick="filterOrdersByStatus('accepted')" style="border-radius: 20px; padding: 8px 20px; border: 2px solid #17a2b8; background: white; color: #17a2b8; font-weight: 600; flex-shrink: 0;">
+            Accepted
+          </button>
+          <button class="order-filter-btn" data-status="delivered" onclick="filterOrdersByStatus('delivered')" style="border-radius: 20px; padding: 8px 20px; border: 2px solid #28a745; background: white; color: #28a745; font-weight: 600; flex-shrink: 0;">
+            Delivered
+          </button>
+          <button class="order-filter-btn" data-status="cancelled" onclick="filterOrdersByStatus('cancelled')" style="border-radius: 20px; padding: 8px 20px; border: 2px solid #dc3545; background: white; color: #dc3545; font-weight: 600; flex-shrink: 0;">
+            Cancelled
+          </button>
+        </div>
+        
+        <!-- Sort Dropdown -->
+        <div class="mb-3">
+          <select class="form-select" onchange="sortOrders(this.value)" style="border-radius: 10px; padding: 10px; max-width: 250px;">
+            <option value="newest">Sort: Newest First</option>
+            <option value="oldest">Sort: Oldest First</option>
+            <option value="highest">Sort: Highest Amount</option>
+            <option value="lowest">Sort: Lowest Amount</option>
+          </select>
+        </div>
+        
+      </div>
+      
+      <!-- Orders List Container -->
+      <div class="container-fluid" style="padding: 0 20px 20px 20px;">
+        <div id="ordersListContainer">
+          <!-- Orders will be rendered here by JavaScript -->
+          <div style="text-align:center; padding:40px;">
+            <div class="spinner-border text-primary" role="status"></div>
+            <p class="mt-3">Loading your orders...</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- Empty State -->
+      <div id="ordersEmptyState" style="display:none; text-align:center; padding:60px 20px;">
+        <i class="bi bi-bag-x" style="font-size:64px; color:#ccc;"></i>
+        <h4 style="margin-top:20px;">No Orders Yet</h4>
+        <p>Start shopping from local shops in Urban Estate 2!</p>
+        <button class="btn btn-success mt-3" onclick="goBackFromOrders()">
+          <i class="bi bi-shop"></i> Browse Shops
+        </button>
+      </div>
+      
+    </div>
+    
+    <!-- ============================================
+         ORDER DETAILS MODAL
+         ============================================ -->
+    <div class="modal fade" id="orderDetailsModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered modal-lg modal-dialog-scrollable">
+        <div class="modal-content" style="border-radius: 15px;">
+          <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
+            <h5 class="modal-title"><i class="bi bi-receipt"></i> Order Details</h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+          </div>
+          <div class="modal-body" id="orderDetailsModalBody">
+            <!-- Will be populated by JavaScript -->
+          </div>
+          <div class="modal-footer" style="border: none;">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+     DELIVERY ADDRESS MODAL
+     ============================================ -->
+<div class="modal fade" id="deliveryAddressModal" tabindex="-1" aria-hidden="true">
+  <div class="modal-dialog modal-dialog-centered">
+    <div class="modal-content" style="border-radius: 15px; border: none;">
+      
+      <!-- Modal Header -->
+      <div class="modal-header" style="background: linear-gradient(135deg, #0d6efd 0%, #0a58ca 100%); color: white; border: none; border-radius: 15px 15px 0 0;">
+        <h5 class="modal-title" style="font-weight: 700;">
+          <i class="bi bi-geo-alt me-2"></i>Delivery Address
+        </h5>
+        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+      </div>
+      
+      <!-- Modal Body -->
+      <div class="modal-body p-4">
+        
+        <!-- Info Alert -->
+        <div class="alert alert-info" style="border-radius: 10px; border-left: 4px solid #0d6efd;">
+          <i class="bi bi-info-circle me-2"></i>
+          <strong>Delivery Area:</strong> Urban Estate 2, Hisar
+        </div>
+        
+        <form id="deliveryAddressForm">
+          
+          <!-- Full Name -->
+          <div class="mb-3">
+            <label for="addressName" class="form-label" style="font-weight: 600;">
+              <i class="bi bi-person me-1"></i>Full Name <span class="text-danger">*</span>
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="addressName" 
+              placeholder="Enter your full name"
+              required
+              style="border-radius: 8px; padding: 12px;">
+          </div>
+          
+          <!-- Phone Number -->
+          <div class="mb-3">
+            <label for="addressPhone" class="form-label" style="font-weight: 600;">
+              <i class="bi bi-phone me-1"></i>Phone Number <span class="text-danger">*</span>
+            </label>
+            <input 
+              type="tel" 
+              class="form-control" 
+              id="addressPhone" 
+              placeholder="10-digit mobile number"
+              required
+              pattern="[0-9]{10}"
+              maxlength="10"
+              style="border-radius: 8px; padding: 12px;">
+            <small class="text-muted">Example: 9876543210</small>
+          </div>
+          
+          <!-- House/Flat Number -->
+          <div class="mb-3">
+            <label for="addressHouse" class="form-label" style="font-weight: 600;">
+              <i class="bi bi-house me-1"></i>House/Flat Number <span class="text-danger">*</span>
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="addressHouse" 
+              placeholder="e.g., House No. 123, Block A"
+              required
+              style="border-radius: 8px; padding: 12px;">
+          </div>
+          
+          <!-- Area/Locality (Pre-filled, Read-only) -->
+          <div class="mb-3">
+            <label for="addressArea" class="form-label" style="font-weight: 600;">
+              <i class="bi bi-map me-1"></i>Area/Locality
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="addressArea" 
+              value="Urban Estate 2, Hisar"
+              readonly
+              style="border-radius: 8px; padding: 12px; background-color: #e9ecef;">
+            <small class="text-success">
+              <i class="bi bi-check-circle"></i> Fixed delivery area
+            </small>
+          </div>
+          
+          <!-- Landmark (Optional) -->
+          <div class="mb-3">
+            <label for="addressLandmark" class="form-label" style="font-weight: 600;">
+              <i class="bi bi-signpost me-1"></i>Landmark (Optional)
+            </label>
+            <input 
+              type="text" 
+              class="form-control" 
+              id="addressLandmark" 
+              placeholder="e.g., Near Park, Behind Market"
+              style="border-radius: 8px; padding: 12px;">
+          </div>
+          
+        </form>
+        
+      </div>
+      
+      <!-- Modal Footer -->
+      <div class="modal-footer" style="border: none; padding: 20px; background: #f8f9fa;">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 8px; padding: 10px 24px;">
+          <i class="bi bi-x-circle me-2"></i>Cancel
+        </button>
+        <button type="button" class="btn btn-primary" onclick="saveDeliveryAddress()" style="border-radius: 8px; padding: 10px 24px; font-weight: 600;">
+          <i class="bi bi-check-circle me-2"></i>Save Address
+        </button>
+      </div>
+      
+    </div>
+  </div>
+</div>
+
+
+
+    <!-- Customer Module -->
+<script src="customer.js"></script>
 
 <!-- ============================================
      JAVASCRIPT
@@ -1697,9 +2148,9 @@ function goToHome() {
 }
 
 /**
- * Navigate to Different Pages
+ * Navigate to Different Pages (UPDATED with address handling)
  */
-function navigateTo(page) {
+ function navigateTo(page) {
   console.log('📍 Navigating to:', page);
   
   // Update current page
@@ -1711,15 +2162,50 @@ function navigateTo(page) {
   // Update active state
   updateSidebarActive(page);
   
-  // Handle navigation based on page
+  // ✅ Handle specific pages
+  if (page === 'orders') {
+    // Navigate to My Orders page (customer only)
+    if (typeof navigateToCustomerOrders === 'function') {
+      navigateToCustomerOrders();
+    } else {
+      console.error('❌ navigateToCustomerOrders function not found');
+      alert('⚠️ My Orders page is not available. Please refresh the page.');
+    }
+    return;
+  }
+  
+  if (page === 'cart') {
+    // Navigate to cart
+    if (typeof navigateToCart === 'function') {
+      navigateToCart();
+    } else {
+      alert('⚠️ Cart page is not available.');
+    }
+    return;
+  }
+  
+  // ✅ NEW: Handle Delivery Address
+  if (page === 'address') {
+    if (!window.currentUser) {
+      alert('⚠️ Please sign in to manage your delivery address.');
+      return;
+    }
+    
+    if (typeof openDeliveryAddressModal === 'function') {
+      openDeliveryAddressModal();
+    } else {
+      console.error('❌ openDeliveryAddressModal function not found');
+      alert('⚠️ Delivery address feature is not available.');
+    }
+    return;
+  }
+  
+  // Handle other pages with coming soon message
   const pageNames = {
     'categories': '📂 Categories',
     'shops': '🏪 All Shops',
     'deals': '🏷️ Deals & Offers',
-    'orders': '📦 My Orders',
-    'cart': '🛒 Shopping Cart',
     'favorites': '❤️ Favorites',
-    'address': '📍 Delivery Address',
     'profile': '👤 Profile Settings',
     'help': '❓ Help & Support'
   };
@@ -1729,6 +2215,7 @@ function navigateTo(page) {
   // Show coming soon alert
   alert(`⏳ "${pageName}" feature coming soon!\n\nThis will be implemented in the next phase.`);
 }
+
 
 /**
  * Sidebar Action function (for future use)
@@ -2109,12 +2596,15 @@ function escapeHtml(text) {
 // Global variables
 let currentShopData = null;
 let allShopProducts = [];
-
 /**
- * Navigate to Shop Products Page
+ * Navigate to Shop Products Page (FIXED - Better debugging)
  */
  function navigateToShopProducts(shopId, shopName) {
-  console.log('🏪 Navigating to Shop Products:', shopId, shopName);
+  console.log('🏪 ========================================');
+  console.log('🏪 Navigating to Shop Products');
+  console.log('🏪 Shop ID:', shopId);
+  console.log('🏪 Shop Name:', shopName);
+  console.log('🏪 ========================================');
   
   // Store current shop data
   currentShopData = cachedShops.find(shop => shop.id === shopId);
@@ -2124,6 +2614,12 @@ let allShopProducts = [];
     alert('Shop not found!');
     return;
   }
+  
+  console.log('✅ Shop Data:', currentShopData);
+  console.log('  - Shop ID:', currentShopData.id);
+  console.log('  - Shop Name:', currentShopData.shopName);
+  console.log('  - Owner ID:', currentShopData.ownerId);
+  console.log('  - Owner Name:', currentShopData.ownerName);
   
   // Hide main app and navbar
   const mainApp = document.getElementById('mainApp');
@@ -2159,35 +2655,65 @@ let allShopProducts = [];
   renderShopInfo(currentShopData);
   
   // Load shop products
- // ✅ NEW
-loadShopProducts(currentShopData.id);
-
+  loadShopProducts(currentShopData.id);
   
-  // ✅ NEW: Show/Hide Add Products button based on ownership
+  // ✅ FIXED: Show/Hide Add Products button based on ownership
+  console.log('🔍 ========================================');
+  console.log('🔍 Checking Add Products Button Visibility');
+  console.log('🔍 ========================================');
+  console.log('  - Current User:', window.currentUser);
+  console.log('  - User UID:', window.currentUser?.uid);
+  console.log('  - User Role:', window.currentUser?.role);
+  console.log('  - Shop Owner ID:', currentShopData.ownerId);
+  
   const addProductsBtn = document.getElementById('addProductsBtn');
   const headerSpacer = document.getElementById('headerSpacer');
   
-  if (window.currentUser && 
-      window.currentUser.role === 'shopowner' && 
-      window.currentUser.uid === currentShopData.ownerId) {
+  console.log('  - Add Products Button Element:', addProductsBtn);
+  console.log('  - Header Spacer Element:', headerSpacer);
+  
+  // Check ownership
+  const isShopowner = window.currentUser && window.currentUser.role === 'shopowner';
+  const ownsThisShop = window.currentUser && window.currentUser.uid === currentShopData.ownerId;
+  
+  console.log('  - Is Shopowner?', isShopowner);
+  console.log('  - Owns This Shop?', ownsThisShop);
+  
+  if (isShopowner && ownsThisShop) {
     // User owns this shop - show Add Products button
+    console.log('✅ SHOWING Add Products Button (User owns this shop)');
     if (addProductsBtn) {
       addProductsBtn.style.display = 'block';
+      console.log('  - Button display set to: block');
+    } else {
+      console.error('❌ addProductsBtn element not found!');
     }
+    
     if (headerSpacer) {
       headerSpacer.style.display = 'none';
+      console.log('  - Spacer hidden');
     }
-    console.log('✅ Add Products button shown (Shop Owner)');
   } else {
     // Hide button for customers or other shopowners
+    console.log('ℹ️ HIDING Add Products Button');
+    if (!isShopowner) {
+      console.log('  - Reason: User is not a shopowner (role: ' + window.currentUser?.role + ')');
+    } else {
+      console.log('  - Reason: User does not own this shop');
+      console.log('    - User UID:', window.currentUser?.uid);
+      console.log('    - Shop Owner UID:', currentShopData.ownerId);
+    }
+    
     if (addProductsBtn) {
       addProductsBtn.style.display = 'none';
     }
+    
     if (headerSpacer) {
       headerSpacer.style.display = 'block';
     }
-    console.log('ℹ️ Add Products button hidden (Customer/Other Shopowner)');
   }
+  
+  console.log('🔍 ========================================');
   
   // Scroll to top
   window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -2543,46 +3069,78 @@ function addToCart(productId) {
 let pendingProducts = [];
 
 /**
- * Open Add Products Modal
+ * Open Add Products Modal (UPDATED with better debugging)
  */
-function openAddProductsModal() {
-  console.log('➕ Opening Add Products modal');
+ function openAddProductsModal() {
+  console.log('➕ ========================================');
+  console.log('➕ Opening Add Products Modal');
+  console.log('➕ ========================================');
   
   // Check if user is shopowner and owns this shop
-  if (!window.currentUser || window.currentUser.role !== 'shopowner') {
+  if (!window.currentUser) {
+    console.error('❌ No user signed in');
+    alert('⚠️ Please sign in to add products.');
+    return;
+  }
+  
+  if (window.currentUser.role !== 'shopowner') {
+    console.error('❌ User is not a shopowner (role: ' + window.currentUser.role + ')');
     alert('⚠️ Only shopowners can add products.');
     return;
   }
   
-  if (!currentShopData || currentShopData.ownerId !== window.currentUser.uid) {
+  if (!currentShopData) {
+    console.error('❌ No shop data available');
+    alert('❌ Shop data not found');
+    return;
+  }
+  
+  if (currentShopData.ownerId !== window.currentUser.uid) {
+    console.error('❌ User does not own this shop');
+    console.log('  - User UID:', window.currentUser.uid);
+    console.log('  - Shop Owner UID:', currentShopData.ownerId);
     alert('⚠️ You can only add products to your own shop.');
     return;
   }
+  
+  console.log('✅ All checks passed, opening modal...');
   
   // Reset pending products
   pendingProducts = [];
   
   // Clear input
-  document.querySelectorAll('#productInput').forEach(inp => {
-    inp.value = '';
-    inp.setAttribute('value', '');
+  const productInput = document.getElementById('productInput');
+  if (productInput) {
+    productInput.value = '';
     window.lastProductInput = '';
-    inp.dispatchEvent(new Event('input', { bubbles: true }));
-  });
+  }
   
   // Update preview
   updateProductsPreviewList();
   
   // Open modal
-  const modal = new bootstrap.Modal(document.getElementById('addProductsModal'));
+  const modalElement = document.getElementById('addProductsModal');
+  if (!modalElement) {
+    console.error('❌ addProductsModal element not found');
+    alert('❌ Modal not found');
+    return;
+  }
+  
+  const modal = new bootstrap.Modal(modalElement);
   modal.show();
+  console.log('✅ Modal opened');
   
   // Focus on input
   setTimeout(() => {
-    const input = document.getElementById('productInput');
-    if (input) input.focus();
-  }, 200);
+    if (productInput) {
+      productInput.focus();
+      console.log('✅ Input focused');
+    }
+  }, 300);
 }
+
+// Make it global
+window.openAddProductsModal = openAddProductsModal;
 
 /**
  * Handle Product Input Keydown (Enter or Comma)
@@ -2822,13 +3380,12 @@ function removePendingProduct(index) {
     alert('❌ Error saving products: ' + error.message);
   }
 }
-
-
 /**
  * ==========================================
- * CART MANAGEMENT SYSTEM
+ * CART MANAGEMENT SYSTEM (UPDATED with Featured Products)
  * ==========================================
  */
+
 
 // Global cart state
 let cart = {
@@ -2838,8 +3395,10 @@ let cart = {
   shopOwnerId: null
 };
 
+
 // Pending item for shop conflict resolution
 let pendingCartItem = null;
+
 
 /**
  * Initialize Cart from Storage
@@ -2858,6 +3417,7 @@ function initializeCart() {
   }
 }
 
+
 /**
  * Save Cart to Storage
  */
@@ -2870,8 +3430,9 @@ function saveCart() {
   }
 }
 
+
 /**
- * Add Product to Cart
+ * Add Product to Cart (UPDATED with featured products refresh)
  */
 function addToCart(product) {
   console.log('🛒 Add to cart:', product);
@@ -2936,15 +3497,26 @@ function addToCart(product) {
   saveCart();
   updateMiniCart();
   updateCartPage();
-  renderShopProducts(allShopProducts); // Re-render to show stepper
+  
+  // Re-render products to show stepper
+  if (typeof allShopProducts !== 'undefined' && allShopProducts) {
+    renderShopProducts(allShopProducts);
+  }
+  
+  // ✅ NEW: Update featured products display
+  if (typeof refreshFeaturedProductsDisplay === 'function') {
+    refreshFeaturedProductsDisplay();
+  }
   
   // Show success animation
   showMiniCartBriefly();
 }
+
+
 /**
- * Update Item Quantity in Cart
+ * Update Item Quantity in Cart (UPDATED with featured products refresh)
  */
- function updateCartQuantity(productId, change) {
+function updateCartQuantity(productId, change) {
   const item = cart.items.find(i => i.id === productId);
   
   if (!item) {
@@ -2954,7 +3526,7 @@ function addToCart(product) {
   
   const newQuantity = item.quantity + change;
   
-  // ✅ Remove item if quantity becomes 0 or negative
+  // Remove item if quantity becomes 0 or negative
   if (newQuantity <= 0) {
     console.log('🗑️ Quantity reached 0, removing item');
     removeFromCart(productId);
@@ -2972,19 +3544,25 @@ function addToCart(product) {
   console.log(`✅ Updated quantity: ${item.name} = ${item.quantity}`);
   
   saveCart();
-  updateMiniCart(); // ✅ Will hide if cart becomes empty
+  updateMiniCart();
   updateCartPage();
   
   // Update product page
   if (typeof allShopProducts !== 'undefined' && allShopProducts) {
     renderShopProducts(allShopProducts);
   }
+  
+  // ✅ NEW: Update featured products display
+  if (typeof refreshFeaturedProductsDisplay === 'function') {
+    refreshFeaturedProductsDisplay();
+  }
 }
 
+
 /**
- * Remove Item from Cart
+ * Remove Item from Cart (UPDATED with featured products refresh)
  */
- function removeFromCart(productId) {
+function removeFromCart(productId) {
   const itemIndex = cart.items.findIndex(i => i.id === productId);
   
   if (itemIndex === -1) return;
@@ -3003,18 +3581,25 @@ function addToCart(product) {
   }
   
   saveCart();
-  updateMiniCart(); // ✅ This will hide mini-cart if empty
+  updateMiniCart();
   updateCartPage();
   
   // Update product page if available
   if (typeof allShopProducts !== 'undefined' && allShopProducts) {
     renderShopProducts(allShopProducts);
   }
+  
+  // ✅ NEW: Update featured products display
+  if (typeof refreshFeaturedProductsDisplay === 'function') {
+    refreshFeaturedProductsDisplay();
+  }
 }
+
+
 /**
- * Clear Entire Cart
+ * Clear Entire Cart (UPDATED with featured products refresh)
  */
- function clearCart() {
+function clearCart() {
   console.log('🗑️ Clearing entire cart');
   
   cart = { 
@@ -3025,7 +3610,7 @@ function addToCart(product) {
   };
   
   saveCart();
-  updateMiniCart(); // ✅ This will hide mini-cart
+  updateMiniCart(); // This will hide mini-cart and remove padding
   updateCartPage();
   
   // Update product page if available
@@ -3033,20 +3618,19 @@ function addToCart(product) {
     renderShopProducts(allShopProducts);
   }
   
-  // ✅ Force hide mini-cart
-  const miniCartFooter = document.getElementById('miniCartFooter');
-  if (miniCartFooter) {
-    miniCartFooter.style.display = 'none';
-    miniCartFooter.classList.remove('show');
+  // ✅ NEW: Update featured products display
+  if (typeof refreshFeaturedProductsDisplay === 'function') {
+    refreshFeaturedProductsDisplay();
   }
   
   console.log('✅ Cart cleared successfully');
 }
 
+
 /**
- * Update Mini-Cart Footer
+ * Update Mini-Cart Footer (UPDATED with padding management)
  */
- function updateMiniCart() {
+function updateMiniCart() {
   const miniCartFooter = document.getElementById('miniCartFooter');
   const miniCartCount = document.getElementById('miniCartCount');
   const miniCartPreview = document.getElementById('miniCartPreview');
@@ -3057,17 +3641,24 @@ function addToCart(product) {
   const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
   const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
   
-  // ✅ FIXED: Hide mini-cart when empty
+  // ✅ Hide mini-cart when empty
   if (totalItems === 0 || cart.items.length === 0) {
-    miniCartFooter.style.display = 'none';
-    miniCartFooter.classList.remove('show');
+    // Use the global hide function with padding management
+    if (typeof hideMiniCartFooter === 'function') {
+      hideMiniCartFooter();
+    } else {
+      miniCartFooter.style.display = 'none';
+    }
     console.log('🚫 Mini-cart hidden (0 items)');
     return;
   }
   
-  // Show mini-cart
-  miniCartFooter.style.display = 'block';
-  miniCartFooter.classList.add('show');
+  // ✅ Show mini-cart with padding management
+  if (typeof showMiniCartFooter === 'function') {
+    showMiniCartFooter();
+  } else {
+    miniCartFooter.style.display = 'block';
+  }
   
   // Update count
   if (miniCartCount) {
@@ -3089,14 +3680,15 @@ function addToCart(product) {
   console.log('✅ Mini-cart updated:', totalItems, 'items, ₹', totalAmount);
 }
 
+
 /**
- * Show Mini-Cart Briefly (After Add)
+ * Show Mini-Cart Briefly (After Add) - with animation
  */
 function showMiniCartBriefly() {
   const miniCartFooter = document.getElementById('miniCartFooter');
   if (!miniCartFooter) return;
   
-  miniCartFooter.style.transform = 'translateY(0)';
+  // Add pulse animation
   miniCartFooter.style.animation = 'pulse 0.3s ease';
   
   setTimeout(() => {
@@ -3104,14 +3696,20 @@ function showMiniCartBriefly() {
   }, 300);
 }
 
+
 /**
- * Navigate to Cart Page
+ * Navigate to Cart Page (UPDATED with padding management)
  */
 function navigateToCart() {
   console.log('🛒 Navigating to Cart Page');
   
+  if (!window.currentUser) {
+    alert('⚠️ Please sign in to view your cart.');
+    return;
+  }
+  
   if (cart.items.length === 0) {
-    alert('⚠️ Your cart is empty!');
+    alert('⚠️ Your cart is empty!\n\nAdd products from shops to get started.');
     return;
   }
   
@@ -3119,9 +3717,22 @@ function navigateToCart() {
   const mainApp = document.getElementById('mainApp');
   const shopProductsPage = document.getElementById('shopProductsPage');
   const cartPage = document.getElementById('cartPage');
+  const myOrdersPage = document.getElementById('myOrdersPage');
   
-  if (mainApp) mainApp.style.display = 'none';
-  if (shopProductsPage) shopProductsPage.style.display = 'none';
+  if (mainApp) {
+    mainApp.style.display = 'none';
+    mainApp.classList.remove('active');
+  }
+  
+  if (shopProductsPage) {
+    shopProductsPage.style.display = 'none';
+    shopProductsPage.classList.remove('active');
+  }
+  
+  if (myOrdersPage) {
+    myOrdersPage.style.display = 'none';
+    myOrdersPage.classList.remove('active');
+  }
   
   // Show cart page
   if (cartPage) {
@@ -3129,16 +3740,40 @@ function navigateToCart() {
     cartPage.classList.add('active');
   }
   
+  // Hide navbar
+  const mainNavbar = document.getElementById('mainAppNavbar');
+  if (mainNavbar) {
+    mainNavbar.style.display = 'none';
+  }
+  
+  const stickyNavbar = document.querySelector('.navbar.sticky-top');
+  if (stickyNavbar) {
+    stickyNavbar.style.display = 'none';
+  }
+  
+  // ✅ Hide mini-cart footer on cart page (no need to show it here)
+  if (typeof hideMiniCartFooter === 'function') {
+    hideMiniCartFooter();
+  }
+  
   // Update cart page
-  updateCartPage();
+  if (typeof updateCartPage === 'function') {
+    updateCartPage();
+  }
   
   window.scrollTo({ top: 0, behavior: 'smooth' });
   window.location.hash = '#cart';
 }
+
+
+// Make it global
+window.navigateToCart = navigateToCart;
+
+
 /**
- * Update Cart Page
+ * Update Cart Page (UPDATED with padding management)
  */
- function updateCartPage() {
+function updateCartPage() {
   const cartItemsList = document.getElementById('cartItemsList');
   const emptyCartState = document.getElementById('emptyCartState');
   const cartSummary = document.getElementById('cartSummary');
@@ -3154,11 +3789,9 @@ function navigateToCart() {
     if (cartSummary) cartSummary.style.display = 'none';
     if (cartShopInfo) cartShopInfo.style.display = 'none';
     
-    // ✅ Force hide mini-cart
-    const miniCartFooter = document.getElementById('miniCartFooter');
-    if (miniCartFooter) {
-      miniCartFooter.style.display = 'none';
-      miniCartFooter.classList.remove('show');
+    // ✅ Hide mini-cart with padding management
+    if (typeof hideMiniCartFooter === 'function') {
+      hideMiniCartFooter();
     }
     
     console.log('📋 Cart page: Empty state shown');
@@ -3258,30 +3891,18 @@ function navigateToCart() {
 
 
 /**
- * Force Hide Mini-Cart (Utility Function)
- */
- function hideMiniCart() {
-  const miniCartFooter = document.getElementById('miniCartFooter');
-  if (miniCartFooter) {
-    miniCartFooter.style.display = 'none';
-    miniCartFooter.classList.remove('show');
-    miniCartFooter.style.transform = 'translateY(100%)';
-    console.log('🚫 Mini-cart forcibly hidden');
-  }
-}
-
-// Make global
-window.hideMiniCart = hideMiniCart;
-
-
-/**
- * Go Back from Cart
+ * Go Back from Cart (UPDATED with padding management)
  */
 function goBackFromCart() {
   const cartPage = document.getElementById('cartPage');
   if (cartPage) {
     cartPage.style.display = 'none';
     cartPage.classList.remove('active');
+  }
+  
+  // ✅ Show mini-cart again if cart has items
+  if (cart.items.length > 0) {
+    updateMiniCart(); // This will show mini-cart with padding
   }
   
   // Check if coming from shop products page
@@ -3295,6 +3916,84 @@ function goBackFromCart() {
     goBackHome();
   }
 }
+
+
+// Make functions global
+window.initializeCart = initializeCart;
+window.saveCart = saveCart;
+window.addToCart = addToCart;
+window.updateCartQuantity = updateCartQuantity;
+window.removeFromCart = removeFromCart;
+window.clearCart = clearCart;
+window.updateMiniCart = updateMiniCart;
+window.showMiniCartBriefly = showMiniCartBriefly;
+window.updateCartPage = updateCartPage;
+window.goBackFromCart = goBackFromCart;
+
+console.log('✅ Cart management system loaded (with featured products support)');
+
+/**
+ * Go Back to Home (UPDATED)
+ */
+function goBackHome() {
+  const mainApp = document.getElementById('mainApp');
+  if (mainApp) {
+    mainApp.style.display = 'block';
+    mainApp.classList.add('active');
+  }
+  
+  const mainNavbar = document.getElementById('mainAppNavbar');
+  if (mainNavbar) {
+    mainNavbar.style.display = 'flex';
+  }
+  
+  const stickyNavbar = document.querySelector('.navbar.sticky-top');
+  if (stickyNavbar) {
+    stickyNavbar.style.display = 'flex';
+  }
+  
+  // ✅ Show mini-cart if cart has items
+  if (cart.items.length > 0) {
+    updateMiniCart();
+  }
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.location.hash = '#home';
+}
+
+/**
+ * Get Cart Item by ID (Utility)
+ */
+function getCartItem(productId) {
+  return cart.items.find(item => item.id === productId);
+}
+
+/**
+ * Format Price (Utility)
+ */
+function formatPrice(price) {
+  return price.toLocaleString('en-IN', {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2
+  });
+}
+
+// Make cart functions global
+window.cart = cart;
+window.initializeCart = initializeCart;
+window.saveCart = saveCart;
+window.addToCart = addToCart;
+window.updateCartQuantity = updateCartQuantity;
+window.removeFromCart = removeFromCart;
+window.clearCart = clearCart;
+window.updateMiniCart = updateMiniCart;
+window.updateCartPage = updateCartPage;
+window.goBackFromCart = goBackFromCart;
+window.goBackHome = goBackHome;
+window.getCartItem = getCartItem;
+window.formatPrice = formatPrice;
+
+console.log('✅ Cart management system loaded');
 
 /**
  * Show Shop Conflict Modal
@@ -3337,13 +4036,6 @@ function closeShopConflictModal() {
   closeShopConflictModal();
 }
 
-
-/**
- * Proceed to Checkout
- */
-function proceedToCheckout() {
-  alert('🚀 Checkout feature coming soon!\n\nThis will include:\n- Delivery address selection\n- Payment options\n- Order confirmation');
-}
 
 /**
  * Get Cart Item by Product ID
@@ -3718,6 +4410,1420 @@ function skipLogin() {
     alert('⚠️ Guest Mode: You are browsing without authentication.\n\nSign in with Google or Email to place orders.');
   }, 1000);
 }
+
+
+/**
+ * Proceed to Checkout (UPDATED with saved address integration)
+ */
+ async function proceedToCheckout() {
+  console.log('🛒 Proceeding to checkout');
+  
+  // Validate cart
+  if (!cart.items || cart.items.length === 0) {
+    alert('⚠️ Your cart is empty!');
+    return;
+  }
+  
+  // Validate user
+  if (!window.currentUser) {
+    alert('⚠️ Please sign in to continue!');
+    return;
+  }
+  
+  // ✅ Hide mini-cart footer during checkout
+  if (typeof hideMiniCartFooter === 'function') {
+    hideMiniCartFooter();
+  } else {
+    const miniCartFooter = document.getElementById('miniCartFooter');
+    if (miniCartFooter) {
+      miniCartFooter.style.display = 'none';
+    }
+  }
+  
+  // ✅ Load saved delivery address
+  await loadSavedDeliveryAddress();
+  
+  // ✅ Show/hide address sections based on saved address
+  const savedAddressDiv = document.getElementById('checkoutSavedAddress');
+  const noAddressDiv = document.getElementById('checkoutNoAddress');
+  
+  if (savedDeliveryAddress) {
+    // Show saved address
+    if (savedAddressDiv) {
+      savedAddressDiv.style.display = 'block';
+      document.getElementById('savedAddressName').textContent = savedDeliveryAddress.name;
+      document.getElementById('savedAddressDetails').textContent = savedDeliveryAddress.fullAddress;
+      document.getElementById('savedAddressPhone').textContent = savedDeliveryAddress.phone;
+    }
+    if (noAddressDiv) {
+      noAddressDiv.style.display = 'none';
+    }
+    console.log('✅ Showing saved delivery address');
+  } else {
+    // Show no address state
+    if (savedAddressDiv) {
+      savedAddressDiv.style.display = 'none';
+    }
+    if (noAddressDiv) {
+      noAddressDiv.style.display = 'block';
+    }
+    console.log('⚠️ No saved delivery address found');
+  }
+  
+  // Populate checkout summary
+  populateCheckoutSummary();
+  
+  // Show modal
+  const checkoutModal = new bootstrap.Modal(document.getElementById('checkoutModal'));
+  checkoutModal.show();
+  
+  console.log('✅ Checkout modal opened');
+}
+
+// Make it global
+window.proceedToCheckout = proceedToCheckout;
+
+
+
+/**
+ * Checkout Modal Event Listeners (NEW)
+ */
+ document.addEventListener('DOMContentLoaded', function() {
+  const checkoutModal = document.getElementById('checkoutModal');
+  
+  if (checkoutModal) {
+    // ✅ Hide mini-cart when modal opens
+    checkoutModal.addEventListener('show.bs.modal', function () {
+      console.log('📦 Checkout modal opening - hiding mini-cart');
+      
+      if (typeof hideMiniCartFooter === 'function') {
+        hideMiniCartFooter();
+      } else {
+        const miniCartFooter = document.getElementById('miniCartFooter');
+        if (miniCartFooter) {
+          miniCartFooter.style.display = 'none';
+        }
+      }
+    });
+    
+    // ✅ Show mini-cart when modal closes (if cart has items)
+    checkoutModal.addEventListener('hidden.bs.modal', function () {
+      console.log('📦 Checkout modal closed - checking cart');
+      
+      // Only show mini-cart if we're still on cart page and cart has items
+      const cartPage = document.getElementById('cartPage');
+      const isOnCartPage = cartPage && cartPage.style.display !== 'none';
+      
+      if (!isOnCartPage && cart.items.length > 0) {
+        // Not on cart page - show mini-cart
+        if (typeof showMiniCartFooter === 'function') {
+          showMiniCartFooter();
+        } else {
+          updateMiniCart();
+        }
+      }
+    });
+    
+    console.log('✅ Checkout modal event listeners attached');
+  }
+});
+
+/**
+ * Populate Checkout Summary
+ */
+function populateCheckoutSummary() {
+  const itemsList = document.getElementById('checkoutItemsList');
+  const itemCount = document.getElementById('checkoutItemCount');
+  const subtotal = document.getElementById('checkoutSubtotal');
+  const total = document.getElementById('checkoutTotal');
+  
+  if (!itemsList || !cart.items) return;
+  
+  // Render items
+  let html = '';
+  cart.items.forEach(item => {
+    const itemTotal = item.price * item.quantity;
+    html += `
+      <div class="checkout-item">
+        <div class="checkout-item-details">
+          <div class="checkout-item-name">${escapeHtml(item.name)}</div>
+          <div class="checkout-item-meta">
+            Qty: ${item.quantity} × ₹${item.price.toFixed(2)}
+            ${item.brand ? `<br><small>Brand: ${escapeHtml(item.brand)}</small>` : ''}
+          </div>
+        </div>
+        <div class="checkout-item-price">₹${itemTotal.toFixed(2)}</div>
+      </div>
+    `;
+  });
+  
+  itemsList.innerHTML = html;
+  
+  // Calculate totals
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  itemCount.textContent = totalItems;
+  subtotal.textContent = subtotalAmount.toFixed(2);
+  total.textContent = subtotalAmount.toFixed(2);
+  
+  console.log('✅ Checkout summary populated:', totalItems, 'items, ₹', subtotalAmount);
+}
+
+/**
+ * Validate Phone Number
+ */
+function validatePhone() {
+  const phoneInput = document.getElementById('checkoutPhone');
+  const phoneError = document.getElementById('phoneError');
+  const phone = phoneInput.value.trim();
+  
+  // Remove non-numeric characters
+  phoneInput.value = phone.replace(/\D/g, '');
+  
+  const phoneRegex = /^[6-9][0-9]{9}$/;
+  
+  if (phone.length === 0) {
+    phoneInput.classList.remove('is-valid', 'is-invalid');
+    return false;
+  } else if (!phoneRegex.test(phone)) {
+    phoneInput.classList.remove('is-valid');
+    phoneInput.classList.add('is-invalid');
+    phoneError.textContent = 'Please enter a valid 10-digit Indian mobile number (starting with 6-9)';
+    return false;
+  } else {
+    phoneInput.classList.remove('is-invalid');
+    phoneInput.classList.add('is-valid');
+    return true;
+  }
+}
+
+/**
+ * Validate Address
+ */
+function validateAddress() {
+  const addressInput = document.getElementById('checkoutAddress');
+  const addressError = document.getElementById('addressError');
+  const address = addressInput.value.trim();
+  
+  if (address.length === 0) {
+    addressInput.classList.remove('is-valid', 'is-invalid');
+    addressError.textContent = 'Please enter your house/flat number';
+    return false;
+  } else if (address.length < 3) {
+    addressInput.classList.remove('is-valid');
+    addressInput.classList.add('is-invalid');
+    addressError.textContent = 'Address is too short (minimum 3 characters)';
+    return false;
+  } else {
+    addressInput.classList.remove('is-invalid');
+    addressInput.classList.add('is-valid');
+    return true;
+  }
+}
+
+/**
+ * Validate Area (Must be Urban Estate 2)
+ */
+function validateArea() {
+  const areaInput = document.getElementById('checkoutArea');
+  const areaError = document.getElementById('areaError');
+  const area = areaInput.value.trim().toLowerCase();
+  
+  // Valid area keywords
+  const validKeywords = [
+    'urban estate 2',
+    'urban estate2',
+    'urbanestate 2',
+    'urbanestate2',
+    'ue2',
+    'ue 2',
+    'u.e.2',
+    'u.e. 2',
+    'hisar ue2',
+    'hisar urban estate 2'
+  ];
+  
+  if (area.length === 0) {
+    areaInput.classList.remove('is-valid', 'is-invalid');
+    return false;
+  }
+  
+  // Check if area contains any valid keyword
+  const isValid = validKeywords.some(keyword => area.includes(keyword));
+  
+  if (!isValid) {
+    areaInput.classList.remove('is-valid');
+    areaInput.classList.add('is-invalid');
+    areaError.innerHTML = `
+      <i class="bi bi-exclamation-triangle"></i> 
+      <strong>Delivery available only within Urban Estate 2</strong> — please update your address
+    `;
+    return false;
+  } else {
+    areaInput.classList.remove('is-invalid');
+    areaInput.classList.add('is-valid');
+    return true;
+  }
+}
+/**
+ * Confirm Checkout Order (UPDATED to use saved address)
+ */
+ async function confirmCheckoutOrder() {
+  console.log('✅ Confirming order...');
+  
+  // ✅ Check if delivery address is saved
+  if (!savedDeliveryAddress) {
+    alert('⚠️ Please save your delivery address first!\n\nClick "Edit" button to add your delivery address.');
+    return;
+  }
+  
+  // Prepare order data with saved address
+  const orderData = {
+    orderId: generateOrderId(),
+    customerId: window.currentUser.uid,
+    customerName: savedDeliveryAddress.name,
+    customerEmail: window.currentUser.email,
+    shopId: cart.shopId,
+    shopName: cart.shopName,
+    shopOwnerId: cart.shopOwnerId,
+    items: cart.items.map(item => ({
+      id: item.id,
+      name: item.name,
+      price: item.price,
+      quantity: item.quantity,
+      brand: item.brand || '',
+      size: item.size || ''
+    })),
+    deliveryAddress: {
+      name: savedDeliveryAddress.name,
+      phone: savedDeliveryAddress.phone,
+      house: savedDeliveryAddress.house,
+      area: savedDeliveryAddress.area,
+      landmark: savedDeliveryAddress.landmark || '',
+      fullAddress: savedDeliveryAddress.fullAddress
+    },
+    subtotal: cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+    deliveryFee: 0,
+    tax: 0,
+    total: cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
+    paymentMethod: 'COD',
+    status: 'pending',
+    placedAt: new Date().toISOString(),
+    deliveredAt: null,
+    estimatedDelivery: calculateEstimatedDelivery()
+  };
+  
+  // Disable confirm button
+  const confirmBtn = document.getElementById('confirmOrderBtn');
+  if (confirmBtn) {
+    confirmBtn.disabled = true;
+    confirmBtn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Placing Order...';
+  }
+  
+  try {
+    // Save order to Firestore
+    const { collection, addDoc, serverTimestamp } = window.firebaseImports;
+    
+    const ordersRef = collection(window.db, 'shops', cart.shopId, 'orders');
+    const docRef = await addDoc(ordersRef, {
+      ...orderData,
+      placedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Order placed successfully:', docRef.id);
+    
+    // Clear cart
+    clearCart();
+    
+    // Close modal
+    const checkoutModal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
+    if (checkoutModal) {
+      checkoutModal.hide();
+    }
+    
+    // Show success message
+    showOrderSuccessModal(orderData.orderId, orderData.total);
+    
+    // Navigate to My Orders page
+    setTimeout(() => {
+      if (typeof navigateToCustomerOrders === 'function') {
+        navigateToCustomerOrders();
+      } else {
+        goBackHome();
+      }
+    }, 2000);
+    
+  } catch (error) {
+    console.error('❌ Error placing order:', error);
+    alert('❌ Failed to place order. Please try again.\n\nError: ' + error.message);
+    
+    // Re-enable button
+    if (confirmBtn) {
+      confirmBtn.disabled = false;
+      confirmBtn.innerHTML = '<i class="bi bi-check-circle me-2"></i>Confirm Order';
+    }
+  }
+}
+
+// Make it global
+window.confirmCheckoutOrder = confirmCheckoutOrder;
+
+/**
+ * Generate Unique Order ID
+ */
+ function generateOrderId() {
+  const timestamp = Date.now();
+  const random = Math.floor(Math.random() * 1000).toString().padStart(3, '0');
+  return `ORD-${timestamp}-${random}`;
+}
+
+/**
+ * Calculate Estimated Delivery Time
+ */
+function calculateEstimatedDelivery() {
+  const now = new Date();
+  const deliveryTime = new Date(now.getTime() + (30 * 60 * 1000)); // 30 minutes
+  
+  return deliveryTime.toLocaleTimeString('en-IN', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: true
+  });
+}
+
+/**
+ * Populate Checkout Summary
+ */
+function populateCheckoutSummary() {
+  const itemsList = document.getElementById('checkoutItemsList');
+  const itemCount = document.getElementById('checkoutItemCount');
+  const subtotal = document.getElementById('checkoutSubtotal');
+  const total = document.getElementById('checkoutTotal');
+  
+  if (!itemsList) return;
+  
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  // Populate items
+  let html = '';
+  cart.items.forEach(item => {
+    html += `
+      <div class="d-flex justify-content-between mb-2" style="padding: 8px; background: #f8f9fa; border-radius: 6px;">
+        <div style="flex: 1;">
+          <strong>${escapeHtml(item.name)}</strong>
+          <br>
+          <small class="text-muted">Qty: ${item.quantity} × ₹${item.price.toFixed(2)}</small>
+        </div>
+        <div style="text-align: right;">
+          <strong>₹${(item.price * item.quantity).toFixed(2)}</strong>
+        </div>
+      </div>
+    `;
+  });
+  
+  itemsList.innerHTML = html;
+  
+  // Update totals
+  if (itemCount) itemCount.textContent = totalItems;
+  if (subtotal) subtotal.textContent = totalAmount.toFixed(2);
+  if (total) total.textContent = totalAmount.toFixed(2);
+}
+
+/**
+ * Show Order Success Modal
+ */
+function showOrderSuccessModal(orderId, total) {
+  alert(`🎉 Order Placed Successfully!\n\nOrder ID: ${orderId}\nTotal: ₹${total.toFixed(2)}\n\nYou will be redirected to My Orders page.`);
+}
+
+// Make functions global
+window.generateOrderId = generateOrderId;
+window.calculateEstimatedDelivery = calculateEstimatedDelivery;
+window.populateCheckoutSummary = populateCheckoutSummary;
+window.showOrderSuccessModal = showOrderSuccessModal;
+
+
+// Make functions global
+window.proceedToCheckout = proceedToCheckout;
+window.validatePhone = validatePhone;
+window.validateAddress = validateAddress;
+window.validateArea = validateArea;
+window.confirmCheckoutOrder = confirmCheckoutOrder;
+
+
+/**
+ * Update Sidebar Based on User Role
+ */
+ function updateSidebarForUser() {
+  const myOrdersLink = document.getElementById('myOrdersLink');
+  
+  if (!myOrdersLink) {
+    console.warn('⚠️ myOrdersLink element not found in sidebar');
+    return;
+  }
+  
+  // Show "My Orders" only for customers
+  if (window.currentUser && window.currentUser.role === 'customer') {
+    myOrdersLink.style.display = 'block';
+    console.log('✅ My Orders link shown (customer role)');
+  } else {
+    myOrdersLink.style.display = 'none';
+    console.log('ℹ️ My Orders link hidden (not a customer)');
+  }
+  
+  // You can add more role-based sidebar updates here
+  // Example: Show "Manage Shop" only for shopowners
+}
+
+// Make it global
+window.updateSidebarForUser = updateSidebarForUser;
+
+
+
+/**
+ * Show Mini Cart Footer (UPDATED with padding management)
+ */
+ function showMiniCartFooter() {
+  const miniCartFooter = document.getElementById('miniCartFooter');
+  const miniCartSpacer = document.getElementById('miniCartSpacer');
+  
+  if (miniCartFooter) {
+    miniCartFooter.style.display = 'block';
+  }
+  
+  // ✅ NEW: Show spacer to push content up
+  if (miniCartSpacer) {
+    miniCartSpacer.style.display = 'block';
+  }
+  
+  // ✅ NEW: Add bottom padding to all page containers
+  addBottomPaddingToPages();
+  
+  console.log('✅ Mini cart footer shown with padding');
+}
+
+/**
+ * Hide Mini Cart Footer (UPDATED with padding management)
+ */
+function hideMiniCartFooter() {
+  const miniCartFooter = document.getElementById('miniCartFooter');
+  const miniCartSpacer = document.getElementById('miniCartSpacer');
+  
+  if (miniCartFooter) {
+    miniCartFooter.style.display = 'none';
+  }
+  
+  // ✅ NEW: Hide spacer
+  if (miniCartSpacer) {
+    miniCartSpacer.style.display = 'none';
+  }
+  
+  // ✅ NEW: Remove bottom padding from all pages
+  removeBottomPaddingFromPages();
+  
+  console.log('✅ Mini cart footer hidden, padding removed');
+}
+
+/**
+ * Add Bottom Padding to All Page Containers (NEW)
+ */
+function addBottomPaddingToPages() {
+  // Main app container
+  const mainApp = document.getElementById('mainApp');
+  if (mainApp) {
+    const mainContent = mainApp.querySelector('.main-content, .container');
+    if (mainContent) {
+      mainContent.style.paddingBottom = '100px';
+    }
+  }
+  
+  // Shop products page
+  const shopProductsPage = document.getElementById('shopProductsPage');
+  if (shopProductsPage) {
+    const productsContainer = shopProductsPage.querySelector('.container');
+    if (productsContainer) {
+      productsContainer.style.paddingBottom = '100px';
+    }
+  }
+  
+  // Shop products grid
+  const shopProductsGrid = document.getElementById('shopProductsGrid');
+  if (shopProductsGrid) {
+    shopProductsGrid.style.paddingBottom = '20px';
+  }
+  
+  // My Orders page
+  const myOrdersPage = document.getElementById('myOrdersPage');
+  if (myOrdersPage) {
+    const ordersContainer = myOrdersPage.querySelector('.container');
+    if (ordersContainer) {
+      ordersContainer.style.paddingBottom = '100px';
+    }
+  }
+  
+  console.log('✅ Bottom padding added to all pages');
+}
+
+/**
+ * Remove Bottom Padding from All Page Containers (NEW)
+ */
+function removeBottomPaddingFromPages() {
+  // Main app container
+  const mainApp = document.getElementById('mainApp');
+  if (mainApp) {
+    const mainContent = mainApp.querySelector('.main-content, .container');
+    if (mainContent) {
+      mainContent.style.paddingBottom = '20px';
+    }
+  }
+  
+  // Shop products page
+  const shopProductsPage = document.getElementById('shopProductsPage');
+  if (shopProductsPage) {
+    const productsContainer = shopProductsPage.querySelector('.container');
+    if (productsContainer) {
+      productsContainer.style.paddingBottom = '20px';
+    }
+  }
+  
+  // Shop products grid
+  const shopProductsGrid = document.getElementById('shopProductsGrid');
+  if (shopProductsGrid) {
+    shopProductsGrid.style.paddingBottom = '0';
+  }
+  
+  // My Orders page
+  const myOrdersPage = document.getElementById('myOrdersPage');
+  if (myOrdersPage) {
+    const ordersContainer = myOrdersPage.querySelector('.container');
+    if (ordersContainer) {
+      ordersContainer.style.paddingBottom = '20px';
+    }
+  }
+  
+  console.log('✅ Bottom padding removed from all pages');
+}
+
+// Make functions global
+window.showMiniCartFooter = showMiniCartFooter;
+window.hideMiniCartFooter = hideMiniCartFooter;
+window.addBottomPaddingToPages = addBottomPaddingToPages;
+window.removeBottomPaddingFromPages = removeBottomPaddingFromPages;
+
+
+/**
+ * ==========================================
+ * DELIVERY ADDRESS MANAGEMENT
+ * ==========================================
+ */
+
+// Global variable for saved address
+let savedDeliveryAddress = null;
+/**
+ * Open Delivery Address Modal (UPDATED for nested modal support)
+ */
+ function openDeliveryAddressModal() {
+  console.log('📍 Opening delivery address modal');
+  
+  if (!window.currentUser) {
+    alert('⚠️ Please sign in to manage your delivery address.');
+    return;
+  }
+  
+  // Load saved address
+  loadSavedDeliveryAddress();
+  
+  // ✅ Get references to both modals
+  const addressModalEl = document.getElementById('deliveryAddressModal');
+  const checkoutModalEl = document.getElementById('checkoutModal');
+  
+  // ✅ Check if checkout modal is open
+  const isCheckoutOpen = checkoutModalEl && checkoutModalEl.classList.contains('show');
+  
+  if (isCheckoutOpen) {
+    console.log('🔄 Checkout modal is open, opening address modal on top');
+    
+    // ✅ Store reference that we came from checkout
+    window.openedFromCheckout = true;
+    
+    // ✅ Create and show address modal with higher z-index
+    const addressModal = new bootstrap.Modal(addressModalEl, {
+      backdrop: 'static',
+      keyboard: false
+    });
+    addressModal.show();
+    
+    // ✅ Force z-index after modal opens
+    setTimeout(() => {
+      addressModalEl.style.zIndex = '10100';
+      
+      // Find and update backdrop z-index
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      if (backdrops.length > 0) {
+        const lastBackdrop = backdrops[backdrops.length - 1];
+        lastBackdrop.style.zIndex = '10050';
+      }
+    }, 100);
+    
+  } else {
+    // Normal opening (not from checkout)
+    window.openedFromCheckout = false;
+    const addressModal = new bootstrap.Modal(addressModalEl);
+    addressModal.show();
+  }
+}
+
+
+/**
+ * Load Saved Delivery Address from Firestore
+ */
+async function loadSavedDeliveryAddress() {
+  console.log('📦 Loading saved delivery address...');
+  
+  try {
+    const { doc, getDoc } = window.firebaseImports;
+    
+    const addressDocRef = doc(window.db, 'users', window.currentUser.uid, 'deliveryAddress', 'default');
+    const addressDoc = await getDoc(addressDocRef);
+    
+    if (addressDoc.exists()) {
+      savedDeliveryAddress = addressDoc.data();
+      console.log('✅ Loaded saved address:', savedDeliveryAddress);
+      
+      // Pre-fill form
+      document.getElementById('addressName').value = savedDeliveryAddress.name || '';
+      document.getElementById('addressPhone').value = savedDeliveryAddress.phone || '';
+      document.getElementById('addressHouse').value = savedDeliveryAddress.house || '';
+      document.getElementById('addressLandmark').value = savedDeliveryAddress.landmark || '';
+      
+    } else {
+      console.log('ℹ️ No saved address found');
+      
+      // Pre-fill with user data
+      if (window.currentUser.displayName) {
+        document.getElementById('addressName').value = window.currentUser.displayName;
+      }
+      
+      savedDeliveryAddress = null;
+    }
+    
+  } catch (error) {
+    console.error('❌ Error loading saved address:', error);
+  }
+}
+
+/**
+ * Save Delivery Address (UPDATED to refresh checkout after save)
+ */
+ async function saveDeliveryAddress() {
+  console.log('💾 Saving delivery address...');
+  
+  // Validate form
+  const form = document.getElementById('deliveryAddressForm');
+  if (!form.checkValidity()) {
+    form.classList.add('was-validated');
+    alert('⚠️ Please fill in all required fields!');
+    return;
+  }
+  
+  // Get form data
+  const name = document.getElementById('addressName').value.trim();
+  const phone = document.getElementById('addressPhone').value.trim();
+  const house = document.getElementById('addressHouse').value.trim();
+  const landmark = document.getElementById('addressLandmark').value.trim();
+  
+  // Validate phone
+  if (!/^[0-9]{10}$/.test(phone)) {
+    alert('⚠️ Please enter a valid 10-digit phone number!');
+    document.getElementById('addressPhone').focus();
+    return;
+  }
+  
+  // Prepare address data
+  const addressData = {
+    name: name,
+    phone: phone,
+    house: house,
+    area: 'Urban Estate 2, Hisar',
+    landmark: landmark,
+    fullAddress: `${house}, ${landmark ? landmark + ', ' : ''}Urban Estate 2, Hisar`,
+    updatedAt: new Date().toISOString()
+  };
+  
+  try {
+    const { doc, setDoc, serverTimestamp } = window.firebaseImports;
+    
+    const addressDocRef = doc(window.db, 'users', window.currentUser.uid, 'deliveryAddress', 'default');
+    
+    await setDoc(addressDocRef, {
+      ...addressData,
+      updatedAt: serverTimestamp()
+    });
+    
+    console.log('✅ Address saved successfully');
+    
+    // Update global variable
+    savedDeliveryAddress = addressData;
+    
+    // Close modal
+    closeDeliveryAddressModal();
+    
+    // ✅ If opened from checkout, update checkout display
+    if (window.openedFromCheckout) {
+      setTimeout(() => {
+        updateCheckoutAddress();
+      }, 400);
+    }
+    
+    // Show success message
+    alert('✅ Delivery address saved successfully!');
+    
+  } catch (error) {
+    console.error('❌ Error saving address:', error);
+    alert('❌ Failed to save address. Please try again.\n\nError: ' + error.message);
+  }
+}
+
+
+/**
+ * Get Saved Delivery Address (for checkout)
+ */
+function getSavedDeliveryAddress() {
+  return savedDeliveryAddress;
+}
+
+// Make functions global
+window.openDeliveryAddressModal = openDeliveryAddressModal;
+window.loadSavedDeliveryAddress = loadSavedDeliveryAddress;
+window.saveDeliveryAddress = saveDeliveryAddress;
+window.getSavedDeliveryAddress = getSavedDeliveryAddress;
+window.savedDeliveryAddress = savedDeliveryAddress;
+
+console.log('✅ Delivery address management loaded');
+
+
+/**
+ * Close Delivery Address Modal (UPDATED)
+ */
+ function closeDeliveryAddressModal() {
+  console.log('❌ Closing delivery address modal');
+  
+  const addressModalEl = document.getElementById('deliveryAddressModal');
+  const addressModal = bootstrap.Modal.getInstance(addressModalEl);
+  
+  if (addressModal) {
+    addressModal.hide();
+  }
+  
+  // ✅ If opened from checkout, restore checkout modal focus
+  if (window.openedFromCheckout) {
+    setTimeout(() => {
+      const checkoutModalEl = document.getElementById('checkoutModal');
+      if (checkoutModalEl && checkoutModalEl.classList.contains('show')) {
+        // Restore focus to checkout modal
+        checkoutModalEl.focus();
+      }
+      window.openedFromCheckout = false;
+    }, 300);
+  }
+}
+
+/**
+ * Update Checkout Address Display (NEW)
+ */
+ function updateCheckoutAddress() {
+  console.log('🔄 Updating checkout address display');
+  
+  const savedAddressDiv = document.getElementById('checkoutSavedAddress');
+  const noAddressDiv = document.getElementById('checkoutNoAddress');
+  
+  if (savedDeliveryAddress) {
+    // Show saved address
+    if (savedAddressDiv) {
+      savedAddressDiv.style.display = 'block';
+      document.getElementById('savedAddressName').textContent = savedDeliveryAddress.name;
+      document.getElementById('savedAddressDetails').textContent = savedDeliveryAddress.fullAddress;
+      document.getElementById('savedAddressPhone').textContent = savedDeliveryAddress.phone;
+    }
+    if (noAddressDiv) {
+      noAddressDiv.style.display = 'none';
+    }
+    console.log('✅ Checkout address updated');
+  }
+}
+
+// Make functions global
+window.openDeliveryAddressModal = openDeliveryAddressModal;
+window.closeDeliveryAddressModal = closeDeliveryAddressModal;
+window.saveDeliveryAddress = saveDeliveryAddress;
+window.updateCheckoutAddress = updateCheckoutAddress;
+window.openedFromCheckout = false;
+
+/**
+ * Modal Event Listeners (UPDATED for nested modals)
+ */
+ document.addEventListener('DOMContentLoaded', function() {
+  
+  // Delivery Address Modal Events
+  const deliveryAddressModal = document.getElementById('deliveryAddressModal');
+  if (deliveryAddressModal) {
+    deliveryAddressModal.addEventListener('shown.bs.modal', function () {
+      console.log('📍 Delivery address modal shown');
+      
+      // Force z-index
+      this.style.zIndex = '10100';
+      
+      // Update backdrop z-index
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      if (backdrops.length > 0) {
+        const lastBackdrop = backdrops[backdrops.length - 1];
+        lastBackdrop.style.zIndex = '10050';
+      }
+    });
+    
+    deliveryAddressModal.addEventListener('hidden.bs.modal', function () {
+      console.log('❌ Delivery address modal hidden');
+      
+      // Clean up backdrop if needed
+      const backdrops = document.querySelectorAll('.modal-backdrop');
+      if (backdrops.length > 1) {
+        // Remove extra backdrops
+        for (let i = 1; i < backdrops.length; i++) {
+          backdrops[i].remove();
+        }
+      }
+    });
+  }
+  
+  // Checkout Modal Events
+  const checkoutModal = document.getElementById('checkoutModal');
+  if (checkoutModal) {
+    checkoutModal.addEventListener('show.bs.modal', function () {
+      console.log('📦 Checkout modal opening');
+      if (typeof hideMiniCartFooter === 'function') {
+        hideMiniCartFooter();
+      }
+    });
+    
+    checkoutModal.addEventListener('hidden.bs.modal', function () {
+      console.log('📦 Checkout modal closed');
+      
+      // Show mini-cart if cart has items and not on cart page
+      const cartPage = document.getElementById('cartPage');
+      const isOnCartPage = cartPage && cartPage.style.display !== 'none';
+      
+      if (!isOnCartPage && cart.items.length > 0) {
+        if (typeof updateMiniCart === 'function') {
+          updateMiniCart();
+        }
+      }
+    });
+  }
+  
+  console.log('✅ Modal event listeners attached');
+});
+
+/**
+ * ==========================================
+ * FEATURED PRODUCTS ON HOMEPAGE (FIXED)
+ * ==========================================
+ */
+
+// Global variable for featured products
+let featuredProducts = [];
+
+/**
+ * Load Featured Products from Firestore (FIXED - No composite index needed)
+ */
+async function loadFeaturedProducts() {
+  console.log('🌟 Loading featured products...');
+  
+  const loadingDiv = document.getElementById('featuredProductsLoading');
+  const containerDiv = document.getElementById('featuredProductsContainer');
+  const emptyDiv = document.getElementById('featuredProductsEmpty');
+  
+  if (loadingDiv) loadingDiv.style.display = 'block';
+  if (containerDiv) containerDiv.style.display = 'none';
+  if (emptyDiv) emptyDiv.style.display = 'none';
+  
+  try {
+    const { collection, getDocs } = window.firebaseImports;
+    
+    // Get all shops
+    const shopsRef = collection(window.db, 'shops');
+    const shopsSnapshot = await getDocs(shopsRef);
+    
+    console.log(`📦 Found ${shopsSnapshot.size} shops`);
+    
+    let allProducts = [];
+    
+    // Fetch products from each shop
+    for (const shopDoc of shopsSnapshot.docs) {
+      const shopData = shopDoc.data();
+      const shopId = shopDoc.id;
+      
+      console.log(`🔄 Loading products from shop: ${shopId} (${shopData.shopName})`);
+      
+      try {
+        // ✅ SIMPLIFIED: Just get all products (no complex query)
+        const productsRef = collection(window.db, 'shops', shopId, 'products');
+        const productsSnapshot = await getDocs(productsRef);
+        
+        console.log(`  ➜ Found ${productsSnapshot.size} products in ${shopData.shopName}`);
+        
+        productsSnapshot.forEach(productDoc => {
+          const productData = productDoc.data();
+          
+          // ✅ FILTER: Only include products with stock > 0
+          if (productData.stock && productData.stock > 0) {
+            allProducts.push({
+              id: productDoc.id,
+              shopId: shopId,
+              shopName: shopData.shopName || 'Local Shop',
+              shopOwnerId: shopData.ownerId,
+              ...productData
+            });
+          }
+        });
+        
+      } catch (error) {
+        console.error(`❌ Could not load products from shop ${shopId}:`, error);
+      }
+    }
+    
+    console.log(`✅ Total products loaded: ${allProducts.length}`);
+    
+    // ✅ FALLBACK: If no in-stock products, show all products
+    if (allProducts.length === 0) {
+      console.log('⚠️ No in-stock products found, loading all products...');
+      
+      for (const shopDoc of shopsSnapshot.docs) {
+        const shopData = shopDoc.data();
+        const shopId = shopDoc.id;
+        
+        try {
+          const productsRef = collection(window.db, 'shops', shopId, 'products');
+          const productsSnapshot = await getDocs(productsRef);
+          
+          productsSnapshot.forEach(productDoc => {
+            allProducts.push({
+              id: productDoc.id,
+              shopId: shopId,
+              shopName: shopData.shopName || 'Local Shop',
+              shopOwnerId: shopData.ownerId,
+              ...productDoc.data()
+            });
+          });
+          
+        } catch (error) {
+          console.error(`❌ Error loading all products from ${shopId}:`, error);
+        }
+      }
+      
+      console.log(`✅ Loaded ${allProducts.length} products (including out-of-stock)`);
+    }
+    
+    // Shuffle products for variety
+    allProducts = shuffleArray(allProducts);
+    
+    // Take top 4 products
+    featuredProducts = allProducts.slice(0, 4);
+    
+    console.log('✅ Featured products selected:', featuredProducts.length);
+    console.log('📋 Featured products:', featuredProducts.map(p => p.name));
+    
+    // Render products
+    if (featuredProducts.length > 0) {
+      renderFeaturedProducts();
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (containerDiv) containerDiv.style.display = 'flex';
+    } else {
+      // Show empty state
+      if (loadingDiv) loadingDiv.style.display = 'none';
+      if (emptyDiv) emptyDiv.style.display = 'block';
+    }
+    
+  } catch (error) {
+    console.error('❌ Error loading featured products:', error);
+    alert('Error loading featured products: ' + error.message);
+    if (loadingDiv) loadingDiv.style.display = 'none';
+    if (emptyDiv) emptyDiv.style.display = 'block';
+  }
+}
+
+/**
+ * Render Featured Products
+ */
+function renderFeaturedProducts() {
+  const container = document.getElementById('featuredProductsContainer');
+  if (!container) return;
+  
+  let html = '';
+  
+  const gradients = [
+    'linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%)',
+    'linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%)',
+    'linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%)',
+    'linear-gradient(135deg, #e8f5e9 0%, #c8e6c9 100%)'
+  ];
+  
+  const icons = [
+    '<i class="bi bi-box-seam" style="font-size: 3rem; color: #1976d2;"></i>',
+    '<i class="bi bi-basket" style="font-size: 3rem; color: #7b1fa2;"></i>',
+    '<i class="bi bi-bag-heart" style="font-size: 3rem; color: #e65100;"></i>',
+    '<i class="bi bi-gift" style="font-size: 3rem; color: #2e7d32;"></i>'
+  ];
+  
+  featuredProducts.forEach((product, index) => {
+    const gradient = gradients[index % gradients.length];
+    const icon = icons[index % icons.length];
+    
+    // Check if product is in cart
+    const cartItem = cart.items.find(item => item.id === product.id);
+    const inCart = !!cartItem;
+    const quantity = cartItem ? cartItem.quantity : 0;
+    const stock = product.stock || 0;
+    const price = product.price || 0;
+    
+    html += `
+      <div class="col-md-3 col-6">
+        <div class="card h-100" 
+             style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; cursor: pointer; transition: transform 0.2s;" 
+             onmouseover="this.style.transform='translateY(-5px)'" 
+             onmouseout="this.style.transform='translateY(0)'">
+          
+          <!-- Product Image Placeholder -->
+          <div onclick="navigateToShopProducts('${product.shopId}', '${escapeHtml(product.shopName)}')" 
+               style="background: ${gradient}; height: 150px; display: flex; align-items: center; justify-content: center; cursor: pointer;">
+            ${icon}
+          </div>
+          
+          <!-- Product Details -->
+          <div class="card-body">
+            <h6 class="mb-2" style="font-weight: 600; color: #333;" title="${escapeHtml(product.name)}">
+              ${escapeHtml(truncateText(product.name, 30))}
+            </h6>
+            
+            <p class="text-muted mb-1" style="font-size: 0.8rem;">
+              <i class="bi bi-shop me-1"></i>${escapeHtml(product.shopName)}
+            </p>
+            
+            ${product.brand ? `<p class="text-muted mb-2" style="font-size: 0.75rem;"><strong>Brand:</strong> ${escapeHtml(product.brand)}</p>` : ''}
+            
+            <div class="d-flex justify-content-between align-items-center">
+              <span style="font-size: 1.1rem; font-weight: 700; color: #25D366;">₹${formatPrice(price)}</span>
+              
+              ${inCart ? `
+                <!-- Quantity Stepper (if in cart) -->
+                <div class="quantity-stepper" style="transform: scale(0.85);">
+                  <button onclick="event.stopPropagation(); updateCartQuantity('${product.id}', -1)" ${quantity <= 1 ? 'disabled' : ''}>
+                    <i class="bi bi-dash"></i>
+                  </button>
+                  <span>${quantity}</span>
+                  <button onclick="event.stopPropagation(); updateCartQuantity('${product.id}', 1)" ${quantity >= stock ? 'disabled' : ''}>
+                    <i class="bi bi-plus"></i>
+                  </button>
+                </div>
+              ` : `
+                <!-- Add to Cart Button -->
+                <button onclick="event.stopPropagation(); addToCartFromFeatured('${product.id}')" 
+                        class="btn btn-sm" 
+                        style="background: ${stock > 0 ? '#25D366' : '#ccc'}; color: white; border: none; border-radius: 6px; padding: 4px 12px;"
+                        ${stock <= 0 ? 'disabled' : ''}>
+                  <i class="bi bi-cart-plus"></i>
+                </button>
+              `}
+            </div>
+            
+            ${stock <= 0 ? '<p class="text-danger mt-2 mb-0" style="font-size: 0.75rem;"><i class="bi bi-x-circle"></i> Out of stock</p>' : ''}
+          </div>
+        </div>
+      </div>
+    `;
+  });
+  
+  container.innerHTML = html;
+  console.log('✅ Featured products rendered');
+}
+
+/**
+ * Add to Cart from Featured Products
+ */
+function addToCartFromFeatured(productId) {
+  console.log('🛒 Adding to cart from featured:', productId);
+  
+  const product = featuredProducts.find(p => p.id === productId);
+  if (!product) {
+    console.error('❌ Product not found:', productId);
+    return;
+  }
+  
+  // Use existing addToCart function
+  if (typeof addToCart === 'function') {
+    addToCart(product);
+    
+    // Re-render featured products to show stepper
+    setTimeout(() => {
+      renderFeaturedProducts();
+    }, 100);
+  } else {
+    alert('⚠️ Cart functionality not available. Please refresh the page.');
+  }
+}
+
+/**
+ * Get Cart Item (Helper)
+ */
+function getCartItem(productId) {
+  return cart.items.find(item => item.id === productId);
+}
+
+/**
+ * Scroll to Shops Section
+ */
+function scrollToShops() {
+  const shopsSection = document.getElementById('shopsSection');
+  if (shopsSection) {
+    shopsSection.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+/**
+ * Shuffle Array (for random product selection)
+ */
+function shuffleArray(array) {
+  const shuffled = [...array];
+  for (let i = shuffled.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [shuffled[i], shuffled[j]] = [shuffled[j], shuffled[i]];
+  }
+  return shuffled;
+}
+
+/**
+ * Truncate Text (for long product names)
+ */
+function truncateText(text, maxLength) {
+  if (!text) return '';
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + '...';
+}
+
+/**
+ * Format Price
+ */
+function formatPrice(price) {
+  if (typeof price !== 'number') return '0.00';
+  return price.toFixed(2);
+}
+
+/**
+ * Refresh Featured Products Display (when cart updates)
+ */
+function refreshFeaturedProductsDisplay() {
+  // Check if we're on the homepage and featured products are loaded
+  const mainApp = document.getElementById('mainApp');
+  const isOnHomepage = mainApp && mainApp.style.display === 'block' && mainApp.classList.contains('active');
+  
+  if (isOnHomepage && featuredProducts && featuredProducts.length > 0) {
+    if (typeof renderFeaturedProducts === 'function') {
+      console.log('🔄 Refreshing featured products display');
+      renderFeaturedProducts();
+    }
+  }
+}
+
+// Make functions global
+window.loadFeaturedProducts = loadFeaturedProducts;
+window.renderFeaturedProducts = renderFeaturedProducts;
+window.addToCartFromFeatured = addToCartFromFeatured;
+window.getCartItem = getCartItem;
+window.scrollToShops = scrollToShops;
+window.shuffleArray = shuffleArray;
+window.truncateText = truncateText;
+window.formatPrice = formatPrice;
+window.refreshFeaturedProductsDisplay = refreshFeaturedProductsDisplay;
+
+console.log('✅ Featured products management loaded (FIXED VERSION)');
+
+/**
+ * Check Shop Ownership (Helper for Debugging)
+ */
+ function checkShopOwnership() {
+  if (!currentShopData) {
+    console.log('❌ No shop data available');
+    return false;
+  }
+  
+  if (!window.currentUser) {
+    console.log('❌ No user signed in');
+    return false;
+  }
+  
+  const isOwner = window.currentUser.role === 'shopowner' && 
+                  window.currentUser.uid === currentShopData.ownerId;
+  
+  console.log('🔍 Ownership Check:');
+  console.log('  User:', window.currentUser.email);
+  console.log('  User UID:', window.currentUser.uid);
+  console.log('  User Role:', window.currentUser.role);
+  console.log('  Shop:', currentShopData.shopName);
+  console.log('  Shop Owner UID:', currentShopData.ownerId);
+  console.log('  Is Owner?', isOwner);
+  
+  return isOwner;
+}
+
+// Make it global
+window.checkShopOwnership = checkShopOwnership;
+
+
+/**
+ * Manually Toggle Add Products Button (For Testing)
+ */
+ function toggleAddProductsButton(show) {
+  const addProductsBtn = document.getElementById('addProductsBtn');
+  const headerSpacer = document.getElementById('headerSpacer');
+  
+  if (!addProductsBtn) {
+    console.error('❌ addProductsBtn element not found');
+    return;
+  }
+  
+  if (show) {
+    addProductsBtn.style.display = 'block';
+    if (headerSpacer) headerSpacer.style.display = 'none';
+    console.log('✅ Add Products button shown');
+  } else {
+    addProductsBtn.style.display = 'none';
+    if (headerSpacer) headerSpacer.style.display = 'block';
+    console.log('🚫 Add Products button hidden');
+  }
+}
+
+// Make it global
+window.toggleAddProductsButton = toggleAddProductsButton;
+
+
+/**
+ * ==========================================
+ * AUTO-REFRESH ADD PRODUCTS BUTTON VISIBILITY
+ * ==========================================
+ */
+
+/**
+ * Re-check and Update Add Products Button Visibility
+ * (Runs after user data is fully loaded)
+ */
+ function recheckAddProductsButtonVisibility() {
+  console.log('🔄 Re-checking Add Products button visibility...');
+  
+  const addProductsBtn = document.getElementById('addProductsBtn');
+  const headerSpacer = document.getElementById('headerSpacer');
+  
+  if (!addProductsBtn) {
+    console.log('⚠️ Add Products button not found, skipping check');
+    return;
+  }
+  
+  // Check if we're on shop products page
+  const shopProductsPage = document.getElementById('shopProductsPage');
+  if (!shopProductsPage || shopProductsPage.style.display === 'none') {
+    console.log('⚠️ Not on shop products page, skipping check');
+    return;
+  }
+  
+  // Check if shop data exists
+  if (!currentShopData) {
+    console.log('⚠️ No shop data available, hiding button');
+    addProductsBtn.style.display = 'none';
+    if (headerSpacer) headerSpacer.style.display = 'block';
+    return;
+  }
+  
+  // Check ownership
+  const isShopowner = window.currentUser && window.currentUser.role === 'shopowner';
+  const ownsThisShop = window.currentUser && window.currentUser.uid === currentShopData.ownerId;
+  
+  console.log('📊 Ownership Check Results:');
+  console.log('  - Current User:', window.currentUser?.email || 'Not signed in');
+  console.log('  - User UID:', window.currentUser?.uid || 'N/A');
+  console.log('  - User Role:', window.currentUser?.role || 'N/A');
+  console.log('  - Shop:', currentShopData.shopName);
+  console.log('  - Shop Owner UID:', currentShopData.ownerId);
+  console.log('  - Is Shopowner?', isShopowner);
+  console.log('  - Owns This Shop?', ownsThisShop);
+  
+  if (isShopowner && ownsThisShop) {
+    // Show button
+    console.log('✅ User owns this shop - SHOWING button');
+    addProductsBtn.style.display = 'block';
+    if (headerSpacer) headerSpacer.style.display = 'none';
+  } else {
+    // Hide button
+    console.log('🚫 User does not own this shop - HIDING button');
+    addProductsBtn.style.display = 'none';
+    if (headerSpacer) headerSpacer.style.display = 'block';
+  }
+}
+
+/**
+ * Start Periodic Button Visibility Check
+ * (Checks every 500ms for 5 seconds after page load)
+ */
+function startButtonVisibilityCheck() {
+  let checkCount = 0;
+  const maxChecks = 10; // 10 checks = 5 seconds
+  
+  const intervalId = setInterval(() => {
+    checkCount++;
+    console.log(`🔄 Button visibility check #${checkCount}/${maxChecks}`);
+    
+    recheckAddProductsButtonVisibility();
+    
+    // Stop after max checks or if button is visible
+    const addProductsBtn = document.getElementById('addProductsBtn');
+    if (checkCount >= maxChecks || (addProductsBtn && addProductsBtn.style.display === 'block')) {
+      console.log('✅ Stopping button visibility checks');
+      clearInterval(intervalId);
+    }
+  }, 500);
+}
+
+// Make functions global
+window.recheckAddProductsButtonVisibility = recheckAddProductsButtonVisibility;
+window.startButtonVisibilityCheck = startButtonVisibilityCheck;
+
+console.log('✅ Button visibility auto-refresh system loaded');
+
+/**
+ * Simple Button Visibility Fix (Retries 3 times)
+ */
+ function autoShowAddProductsButton() {
+  const addProductsBtn = document.getElementById('addProductsBtn');
+  const headerSpacer = document.getElementById('headerSpacer');
+  
+  if (!addProductsBtn || !currentShopData || !window.currentUser) return;
+  
+  const isOwner = window.currentUser.role === 'shopowner' && 
+                  window.currentUser.uid === currentShopData.ownerId;
+  
+  if (isOwner) {
+    addProductsBtn.style.display = 'block';
+    if (headerSpacer) headerSpacer.style.display = 'none';
+    console.log('✅ Add Products button auto-shown');
+  }
+}
+
+// Run 3 times with delays
+setTimeout(autoShowAddProductsButton, 300);
+setTimeout(autoShowAddProductsButton, 800);
+setTimeout(autoShowAddProductsButton, 1500);
+
+window.autoShowAddProductsButton = autoShowAddProductsButton;
+
 
 
 
