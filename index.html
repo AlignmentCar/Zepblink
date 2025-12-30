@@ -62,63 +62,72 @@
 
       console.log("✅ Firebase SDK loaded successfully!");
 
-      // Auth State Listener
-      onAuthStateChanged(auth, async (user) => {
-        if (user) {
-          console.log('✅ User signed in:', user.email);
+    // Auth State Listener
+onAuthStateChanged(auth, async (user) => {
+  if (user) {
+    console.log('✅ User signed in:', user.email);
 
-          // Store user info
-          window.currentUser = {
-            email: user.email,
-            uid: user.uid,
-            displayName: user.displayName || user.email.split('@')[0],
-            photoURL: user.photoURL || null
-          };
+    // Check if user exists in Firestore and get their role
+    let userRole = 'customer'; // Default role
+    
+    try {
+      const userDocRef = doc(db, 'users', user.uid);
+      const userDoc = await getDoc(userDocRef);
 
-          // Check if user exists in Firestore
-          try {
-            const userDocRef = doc(db, 'users', user.uid);
-            const userDoc = await getDoc(userDocRef);
+      if (userDoc.exists()) {
+        // Get role from Firestore
+        userRole = userDoc.data().role || 'customer';
+        console.log('📝 User role from Firestore:', userRole);
+        
+        // Update last login
+        await setDoc(userDocRef, {
+          lastLogin: serverTimestamp()
+        }, { merge: true });
+      } else {
+        // Determine role based on email
+        userRole = isAuthorizedShopowner(user.email) ? 'shopowner' : 'customer';
+        
+        // Create new user document with role
+        await setDoc(userDocRef, {
+          email: user.email,
+          displayName: user.displayName || user.email.split('@')[0],
+          photoURL: user.photoURL,
+          location: 'Urban Estate 2, Hisar',
+          role: userRole,
+          createdAt: serverTimestamp(),
+          lastLogin: serverTimestamp()
+        });
+        console.log('✅ New user created with role:', userRole);
+      }
+    } catch (error) {
+      console.error('❌ Error checking user data:', error);
+    }
 
-            if (!userDoc.exists()) {
-              // Determine role based on email
-              const role = isAuthorizedShopowner(user.email) ? 'shopowner' : 'customer';
+    // Store user info with role
+    window.currentUser = {
+      email: user.email,
+      uid: user.uid,
+      displayName: user.displayName || user.email.split('@')[0],
+      photoURL: user.photoURL || null,
+      role: userRole  // ✅ Add role here
+    };
 
-              // Create new user document
-              await setDoc(userDocRef, {
-                email: user.email,
-                displayName: user.displayName,
-                photoURL: user.photoURL,
-                location: 'Urban Estate 2, Hisar',
-                role: role,
-                createdAt: serverTimestamp(),
-                lastLogin: serverTimestamp()
-              });
-              console.log('✅ New user created in Firestore with role:', role);
-            } else {
-              // Update last login
-              await setDoc(userDocRef, {
-                lastLogin: serverTimestamp()
-              }, { merge: true });
-              console.log('✅ User login updated');
-            }
-          } catch (error) {
-            console.error('❌ Error saving user data:', error);
-          }
+    console.log('✅ Current user:', window.currentUser);
 
-          // Show main app
-          showApp();
-        } else {
-          console.log('❌ No user signed in');
-          window.currentUser = null;
-          showAuthScreen();
-        }
-      });
+    // Show main app
+    showApp();
+  } else {
+    console.log('❌ No user signed in');
+    window.currentUser = null;
+    showAuthScreen();
+  }
+});
+
 
       // Check if email is authorized shopowner
       function isAuthorizedShopowner(email) {
         const authorizedEmails = [
-          'shopowner1@example.com',
+          'sharma.uday8831@gmail.com',
           'shopowner2@example.com',
           'shopowner3@example.com'
           // Add more authorized shopowner emails here
@@ -139,25 +148,108 @@
         document.getElementById('mainApp').style.display = 'none';
       }
 
+
       function updateUserInfo() {
-        const userName = document.getElementById('userName');
-        const userEmail = document.getElementById('userEmail');
-        const userAvatar = document.getElementById('userAvatar');
+  const userName = document.getElementById('userName');
+  const userEmail = document.getElementById('userEmail');
+  const userEmailDropdown = document.getElementById('userEmailDropdown');
+  const userEmailMobile = document.getElementById('userEmailMobile');
+  const userAvatar = document.getElementById('userAvatar');
+  const userAvatarMobile = document.getElementById('userAvatarMobile');
+  const userRole = document.getElementById('userRole');
+  const userRoleDropdown = document.getElementById('userRoleDropdown');
+  const userRoleDropdownMobile = document.getElementById('userRoleDropdownMobile');
+  const userRoleMobile = document.getElementById('userRoleMobile');
 
-        if (window.currentUser) {
-          if (userName) userName.textContent = window.currentUser.displayName;
-          if (userEmail) userEmail.textContent = window.currentUser.email;
-          if (userAvatar && window.currentUser.photoURL) {
-            userAvatar.src = window.currentUser.photoURL;
-          }
-        } else {
-          // Guest mode
-          if (userName) userName.textContent = 'Guest User';
-          if (userEmail) userEmail.textContent = 'guest@ue2shop.local';
-        }
-      }
+  if (window.currentUser) {
+    const displayName = window.currentUser.displayName;
+    const email = window.currentUser.email;
+    const role = window.currentUser.role || 'customer';
+    
+    // Update user name
+    if (userName) userName.textContent = displayName;
+    if (userEmail) userEmail.textContent = email;
+    if (userEmailDropdown) userEmailDropdown.textContent = email;
+    if (userEmailMobile) userEmailMobile.textContent = email;
+    
+    // Update avatar
+    const avatarUrl = window.currentUser.photoURL || 
+                     `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=25D366&color=fff`;
+    if (userAvatar) userAvatar.src = avatarUrl;
+    if (userAvatarMobile) userAvatarMobile.src = avatarUrl;
+    
+    // Update role badges
+    let roleText = '';
+    let roleColor = '';
+    let roleIcon = '';
+    
+    if (role === 'shopowner') {
+      roleText = '🏪 Shopowner';
+      roleColor = 'background: #ffc107; color: #000;';
+      roleIcon = 'bi-shop';
+    } else if (role === 'customer') {
+      roleText = '🛍️ Customer';
+      roleColor = 'background: #0d6efd; color: white;';
+      roleIcon = 'bi-person';
+    } else {
+      roleText = '👤 Guest';
+      roleColor = 'background: #6c757d; color: white;';
+      roleIcon = 'bi-person-circle';
+    }
+    
+    if (userRole) {
+      userRole.textContent = roleText;
+      userRole.setAttribute('style', `font-size: 0.65rem; padding: 2px 8px; margin-top: 2px; ${roleColor} border-radius: 10px;`);
+    }
+    
+    if (userRoleDropdown) {
+      userRoleDropdown.textContent = roleText;
+      userRoleDropdown.setAttribute('style', `font-size: 0.7rem; ${roleColor} border-radius: 10px; padding: 3px 8px;`);
+    }
+    
+    if (userRoleDropdownMobile) {
+      userRoleDropdownMobile.textContent = roleText;
+      userRoleDropdownMobile.setAttribute('style', `font-size: 0.7rem; ${roleColor} border-radius: 10px; padding: 3px 8px;`);
+    }
+    
+    if (userRoleMobile) {
+      userRoleMobile.textContent = roleText.split(' ')[0]; // Just the emoji
+      userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${roleColor} border-radius: 10px;`);
+    }
+    
+  } else {
+    // Guest mode
+    if (userName) userName.textContent = 'Guest User';
+    if (userEmail) userEmail.textContent = 'guest@ue2shop.local';
+    if (userEmailDropdown) userEmailDropdown.textContent = 'guest@ue2shop.local';
+    if (userEmailMobile) userEmailMobile.textContent = 'guest@ue2shop.local';
+    
+    const guestAvatar = 'https://ui-avatars.com/api/?name=Guest&background=6c757d&color=fff';
+    if (userAvatar) userAvatar.src = guestAvatar;
+    if (userAvatarMobile) userAvatarMobile.src = guestAvatar;
+    
+    const guestRole = '👤 Guest';
+    const guestStyle = 'background: #6c757d; color: white; border-radius: 10px;';
+    
+    if (userRole) {
+      userRole.textContent = guestRole;
+      userRole.setAttribute('style', `font-size: 0.65rem; padding: 2px 8px; margin-top: 2px; ${guestStyle}`);
+    }
+    if (userRoleDropdown) {
+      userRoleDropdown.textContent = guestRole;
+      userRoleDropdown.setAttribute('style', `font-size: 0.7rem; ${guestStyle} padding: 3px 8px;`);
+    }
+    if (userRoleDropdownMobile) {
+      userRoleDropdownMobile.textContent = guestRole;
+      userRoleDropdownMobile.setAttribute('style', `font-size: 0.7rem; ${guestStyle} padding: 3px 8px;`);
+    }
+    if (userRoleMobile) {
+      userRoleMobile.textContent = '👤';
+      userRoleMobile.setAttribute('style', `position: absolute; top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px; ${guestStyle}`);
+    }
+  }
+}
 
-      window.updateUserInfo = updateUserInfo;
     </script>
 
     <!-- Bootstrap JS -->
@@ -377,93 +469,146 @@
     </div>
     
   </nav>
-
-  <!-- ✅ NAVBAR - Professional with User Dropdown -->
-  <nav id="mainNavbar" class="navbar navbar-dark sticky-top" 
-       style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 12px 0; padding-left: 70px;">
-    <div class="container-fluid">
-      <div class="w-100">
+<!-- ✅ NAVBAR - Professional with User Dropdown + Role Badge -->
+<nav id="mainNavbar" class="navbar navbar-dark sticky-top" 
+     style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 12px 0; padding-left: 70px;">
+  <div class="container-fluid">
+    <div class="w-100">
+      
+      <!-- Row 1: App Name + User Dropdown -->
+      <div class="d-flex align-items-center justify-content-between">
+        <!-- App Name -->
+        <span class="navbar-brand mb-0 h1 d-flex align-items-center" style="margin: 0; font-size: 1.3rem;">
+          <i class="bi bi-shop me-2" style="font-size: 1.5rem;"></i>
+          <span>UE2 Shop</span>
+        </span>
         
-        <!-- Row 1: App Name + User Dropdown -->
-        <div class="d-flex align-items-center justify-content-between">
-          <!-- App Name -->
-          <span class="navbar-brand mb-0 h1 d-flex align-items-center" style="margin: 0; font-size: 1.3rem;">
-            <i class="bi bi-shop me-2" style="font-size: 1.5rem;"></i>
-            <span>UE2 Shop</span>
-          </span>
+        <!-- Desktop: User Dropdown with Role Badge -->
+        <div class="dropdown d-none d-md-block">
+          <button class="btn text-white d-flex align-items-center" 
+                  type="button" 
+                  id="userDropdown" 
+                  data-bs-toggle="dropdown" 
+                  aria-expanded="false"
+                  style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; font-weight: 600; padding: 8px 16px;">
+            <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
+            <div class="d-flex flex-column align-items-start me-2">
+              <span id="userName" style="font-size: 0.9rem;">Loading...</span>
+              <span id="userRole" class="badge" style="font-size: 0.65rem; padding: 2px 8px; margin-top: 2px;">Guest</span>
+            </div>
+            <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
+          </button>
           
-          <!-- Desktop: User Dropdown -->
-          <div class="dropdown d-none d-md-block">
-            <button class="btn text-white d-flex align-items-center" 
-                    type="button" 
-                    id="userDropdown" 
-                    data-bs-toggle="dropdown" 
-                    aria-expanded="false"
-                    style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; font-weight: 600; padding: 8px 16px;">
-              <i class="bi bi-person-circle me-2" style="font-size: 1.5rem;"></i>
-              <span id="userName" class="me-2">Loading...</span>
-              <i class="bi bi-chevron-down" style="font-size: 0.8rem;"></i>
-            </button>
-            
-            <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="border-radius: 10px; min-width: 250px; border: none;">
-              <li>
-                <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
-                  <div class="d-flex align-items-center">
-                    <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
-                    <div>
-                      <strong id="userEmail" style="font-size: 0.85rem;">user@example.com</strong>
-                      <div style="font-size: 0.75rem; opacity: 0.9;">Signed In</div>
-                    </div>
+          <ul class="dropdown-menu dropdown-menu-end shadow" aria-labelledby="userDropdown" style="border-radius: 10px; min-width: 250px; border: none;">
+            <li>
+              <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
+                <div class="d-flex align-items-center">
+                  <img id="userAvatar" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+                  <div style="flex: 1;">
+                    <strong id="userEmailDropdown" style="font-size: 0.85rem; display: block;">user@example.com</strong>
+                    <span id="userRoleDropdown" class="badge mt-1" style="font-size: 0.7rem;">Guest</span>
                   </div>
                 </div>
-              </li>
-              <li><hr class="dropdown-divider" style="margin: 0;"></li>
-              
-              <li>
-                <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
-                  <i class="bi bi-bag me-2" style="color: #25D366;"></i>
-                  <span style="font-weight: 500;">My Orders</span>
-                </a>
-              </li>
-              
-              <li>
-                <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
-                  <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
-                  <span style="font-weight: 500;">Favorites</span>
-                </a>
-              </li>
-              
-              <li>
-                <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
-                  <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
-                  <span style="font-weight: 500;">Delivery Address</span>
-                </a>
-              </li>
-              
-              <li><hr class="dropdown-divider" style="margin: 0;"></li>
-              
-              <li>
-                <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
-                  <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
-                  <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
-                </button>
-              </li>
-            </ul>
-          </div>
-          
-          <!-- Mobile: User Icon Button -->
-          <button class="btn text-white d-md-none" 
+              </div>
+            </li>
+            <li><hr class="dropdown-divider" style="margin: 0;"></li>
+            
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
+                <i class="bi bi-bag me-2" style="color: #25D366;"></i>
+                <span style="font-weight: 500;">My Orders</span>
+              </a>
+            </li>
+            
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
+                <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
+                <span style="font-weight: 500;">Favorites</span>
+              </a>
+            </li>
+            
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
+                <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
+                <span style="font-weight: 500;">Delivery Address</span>
+              </a>
+            </li>
+            
+            <li><hr class="dropdown-divider" style="margin: 0;"></li>
+            
+            <li>
+              <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+                <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
+                <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
+              </button>
+            </li>
+          </ul>
+        </div>
+        
+        <!-- Mobile: User Icon Button with Badge -->
+        <div class="dropdown d-md-none">
+          <button class="btn text-white position-relative" 
                   type="button" 
                   data-bs-toggle="dropdown" 
                   aria-expanded="false"
                   style="background: rgba(255, 255, 255, 0.2); border: none; border-radius: 10px; padding: 8px 12px;">
             <i class="bi bi-person-circle" style="font-size: 1.5rem;"></i>
+            <span id="userRoleMobile" class="badge position-absolute" style="top: -5px; right: -5px; font-size: 0.6rem; padding: 2px 6px;">Guest</span>
           </button>
+          
+          <!-- Mobile Dropdown Menu (same as desktop) -->
+          <ul class="dropdown-menu dropdown-menu-end shadow" style="border-radius: 10px; min-width: 250px; border: none;">
+            <li>
+              <div class="dropdown-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); border-radius: 10px 10px 0 0; color: white; padding: 12px;">
+                <div class="d-flex align-items-center">
+                  <img id="userAvatarMobile" src="https://ui-avatars.com/api/?name=Guest&background=25D366&color=fff" alt="User" style="width: 40px; height: 40px; border-radius: 50%; margin-right: 10px;">
+                  <div style="flex: 1;">
+                    <strong id="userEmailMobile" style="font-size: 0.85rem; display: block;">user@example.com</strong>
+                    <span id="userRoleDropdownMobile" class="badge mt-1" style="font-size: 0.7rem;">Guest</span>
+                  </div>
+                </div>
+              </div>
+            </li>
+            <li><hr class="dropdown-divider" style="margin: 0;"></li>
+            
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('orders'); return false;" style="padding: 12px 16px;">
+                <i class="bi bi-bag me-2" style="color: #25D366;"></i>
+                <span style="font-weight: 500;">My Orders</span>
+              </a>
+            </li>
+            
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('favorites'); return false;" style="padding: 12px 16px;">
+                <i class="bi bi-heart me-2" style="color: #dc3545;"></i>
+                <span style="font-weight: 500;">Favorites</span>
+              </a>
+            </li>
+            
+            <li>
+              <a class="dropdown-item d-flex align-items-center" href="#" onclick="navigateTo('address'); return false;" style="padding: 12px 16px;">
+                <i class="bi bi-geo-alt me-2" style="color: #0d6efd;"></i>
+                <span style="font-weight: 500;">Delivery Address</span>
+              </a>
+            </li>
+            
+            <li><hr class="dropdown-divider" style="margin: 0;"></li>
+            
+            <li>
+              <button class="dropdown-item d-flex align-items-center" onclick="handleSignOut()" style="padding: 12px 16px; background: none; border: none; width: 100%; text-align: left; cursor: pointer;">
+                <i class="bi bi-box-arrow-right me-2" style="color: #128C7E;"></i>
+                <span style="color: #128C7E; font-weight: 500;">Sign Out</span>
+              </button>
+            </li>
+          </ul>
         </div>
         
       </div>
+      
     </div>
-  </nav>
+  </div>
+</nav>
+
 
   <!-- Main Content -->
   <main class="main-content" style="padding: 20px 0; min-height: calc(100vh - 70px); background: #F8F9F8;">
@@ -628,9 +773,7 @@
      JAVASCRIPT
      ============================================ -->
 <script>
-/**
- * ✅ Skip Login Function (Temporary for Development)
- */
+
 function skipLogin() {
   console.log('⏭️ Skipping login - Guest mode');
 
@@ -640,6 +783,7 @@ function skipLogin() {
     uid: 'guest_' + Date.now(),
     displayName: 'Guest User',
     photoURL: null,
+    role: 'guest',  // ✅ Add guest role
     isGuest: true
   };
 
@@ -657,6 +801,7 @@ function skipLogin() {
     alert('⚠️ Guest Mode: You are browsing without authentication.\n\nSign in with Google or Email to place orders.');
   }, 500);
 }
+
 
 /**
  * Handle Google Sign-In (FOR CUSTOMERS)
@@ -711,7 +856,7 @@ async function handleGoogleSignIn() {
 /**
  * Handle Email/Password Sign-In (FOR AUTHORIZED SHOPOWNERS ONLY)
  */
-async function handleEmailPasswordAuth(event) {
+ async function handleEmailPasswordAuth(event) {
   event.preventDefault();
 
   const emailInput = document.getElementById('userEmailInput');
@@ -734,11 +879,34 @@ async function handleEmailPasswordAuth(event) {
   try {
     console.log('🔐 Starting Email/Password Sign-In for:', email);
 
-    const { signInWithEmailAndPassword } = window.firebaseImports;
+    const { signInWithEmailAndPassword, doc, setDoc } = window.firebaseImports;
     const userCredential = await signInWithEmailAndPassword(window.auth, email, password);
     const user = userCredential.user;
 
     console.log('✅ Email/Password Sign-In successful!', user.email);
+
+    // ✅ UPDATE: Set role as shopowner in Firestore
+    try {
+      const userDocRef = doc(window.db, 'users', user.uid);
+      await setDoc(userDocRef, {
+        email: user.email,
+        displayName: user.displayName || user.email.split('@')[0],
+        lastLogin: new Date().toISOString(),
+        role: 'shopowner',  // ✅ Email sign-in = shopowner
+        location: 'Urban Estate 2, Hisar'
+      }, { merge: true });
+      
+      console.log('✅ Role updated to shopowner in Firestore');
+      
+      // ✅ Update window.currentUser with role
+      if (window.currentUser) {
+        window.currentUser.role = 'shopowner';
+      }
+      
+    } catch (firestoreError) {
+      console.error('⚠️ Error updating Firestore:', firestoreError);
+      // Continue anyway - auth was successful
+    }
 
   } catch (error) {
     console.error('❌ Email/Password Sign-In error:', error);
@@ -767,6 +935,7 @@ async function handleEmailPasswordAuth(event) {
     }
   }
 }
+
 
 /**
  * Toggle Password Visibility
