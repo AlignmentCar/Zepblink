@@ -32,7 +32,6 @@
       import {
   getFirestore,
   collection,
-  collectionGroup,
   doc,
   getDoc,
   getDocs,
@@ -63,7 +62,7 @@
       window.auth = auth;
       window.db = db;
       window.firebaseImports = {
-  collection, collectionGroup, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, serverTimestamp,
+  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, serverTimestamp,
   signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
   onAuthStateChanged, signOut
 };
@@ -71,12 +70,11 @@
 
       console.log("✅ Firebase SDK loaded successfully!");
 
-    // Auth State Listener
+  // Auth State Listener (FIXED)
 onAuthStateChanged(auth, async (user) => {
   if (user) {
-    console.log('✅ User signed in:', user.email);
+    console.log('✅ User signed in:', user.email || user.uid);
 
-    // Check if user exists in Firestore and get their role
     let userRole = 'customer'; // Default role
     
     try {
@@ -84,7 +82,6 @@ onAuthStateChanged(auth, async (user) => {
       const userDoc = await getDoc(userDocRef);
 
       if (userDoc.exists()) {
-        // Get role from Firestore
         userRole = userDoc.data().role || 'customer';
         console.log('📝 User role from Firestore:', userRole);
         
@@ -93,14 +90,17 @@ onAuthStateChanged(auth, async (user) => {
           lastLogin: serverTimestamp()
         }, { merge: true });
       } else {
-        // Determine role based on email
-        userRole = isAuthorizedShopowner(user.email) ? 'shopowner' : 'customer';
+        // ✅ Check if email exists before using it
+        const userEmail = user.email || `anonymous_${user.uid.slice(0, 8)}@ue2shop.test`;
         
-        // Create new user document with role
+        // Determine role based on email
+        userRole = (user.email && isAuthorizedShopowner(user.email)) ? 'shopowner' : 'customer';
+        
+        // Create new user document
         await setDoc(userDocRef, {
-          email: user.email,
-          displayName: user.displayName || user.email.split('@')[0],
-          photoURL: user.photoURL,
+          email: userEmail,
+          displayName: user.displayName || userEmail.split('@')[0] || 'User',
+          photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(user.displayName || 'User')}&background=25D366&color=fff`,
           location: 'Urban Estate 2, Hisar',
           role: userRole,
           createdAt: serverTimestamp(),
@@ -112,13 +112,16 @@ onAuthStateChanged(auth, async (user) => {
       console.error('❌ Error checking user data:', error);
     }
 
-    // Store user info with role
+    // ✅ Store user info with safe fallbacks
+    const userEmail = user.email || `anonymous_${user.uid.slice(0, 8)}@ue2shop.test`;
+    const displayName = user.displayName || userEmail.split('@')[0] || 'User';
+
     window.currentUser = {
-      email: user.email,
+      email: userEmail,
       uid: user.uid,
-      displayName: user.displayName || user.email.split('@')[0],
-      photoURL: user.photoURL || null,
-      role: userRole  // ✅ Add role here
+      displayName: displayName,
+      photoURL: user.photoURL || `https://ui-avatars.com/api/?name=${encodeURIComponent(displayName)}&background=25D366&color=fff`,
+      role: userRole
     };
 
     console.log('✅ Current user:', window.currentUser);
@@ -131,6 +134,7 @@ onAuthStateChanged(auth, async (user) => {
     showAuthScreen();
   }
 });
+
 
 
       // Check if email is authorized shopowner
@@ -400,13 +404,25 @@ onAuthStateChanged(auth, async (user) => {
         <p class="text-muted mt-3" style="font-size: 0.8rem; text-align: center;">
           <i class="bi bi-info-circle"></i> Email sign-in is for authorized shopowners only
         </p>
+<!-- ✅ TEST LOGIN BUTTONS (Development Only) -->
+<div class="mt-4 pt-3" style="border-top: 1px solid #dee2e6;">
+  <p class="text-muted mb-2" style="font-size: 0.75rem; text-align: center;">
+    <i class="bi bi-code-slash"></i> Development Testing Only
+  </p>
+  
+  <button onclick="testLoginAsCustomer()" class="btn btn-sm w-100 mb-2" style="background: rgba(13, 110, 253, 0.1); color: #0d6efd; border: 1px dashed #0d6efd; border-radius: 8px; padding: 10px; font-weight: 600;">
+    <i class="bi bi-person-circle me-2"></i>Test Login as Customer
+  </button>
+  
+  <button onclick="testLoginAsShopowner()" class="btn btn-sm w-100 mb-2" style="background: rgba(255, 193, 7, 0.1); color: #856404; border: 1px dashed #856404; border-radius: 8px; padding: 10px; font-weight: 600;">
+    <i class="bi bi-shop me-2"></i>Test Login as Shopowner
+  </button>
+  
+  <button onclick="skipLogin()" class="btn btn-sm w-100" style="background: rgba(108, 117, 125, 0.1); color: #6c757d; border: 1px dashed #6c757d; border-radius: 8px; padding: 8px; font-weight: 600;">
+    <i class="bi bi-skip-forward-circle me-2"></i>Browse as Guest
+  </button>
+</div>
 
-        <!-- ✅ NEW: Skip Login Button (Temporary) -->
-        <div class="mt-4 pt-3" style="border-top: 1px solid #dee2e6;">
-          <button onclick="skipLogin()" class="btn btn-sm w-100" style="background: rgba(37, 211, 102, 0.1); color: #128C7E; border: 1px dashed #128C7E; border-radius: 8px; padding: 10px; font-weight: 600;">
-            <i class="bi bi-skip-forward-circle me-2"></i>Skip Login (Temporary - Development)
-          </button>
-        </div>
 
         <!-- Features -->
         <div class="auth-features">
@@ -489,12 +505,10 @@ onAuthStateChanged(auth, async (user) => {
     <!-- MY ACCOUNT Section -->
     <div class="sidebar-section-title">MY ACCOUNT</div>
     
-    <!-- For Customers -->
-<a href="#" onclick="navigateToCustomerOrders(); return false;" class="sidebar-link">
-  <i class="bi bi-bag-check"></i>
-  <span>My Orders</span>
-</a>
-
+    <div class="sidebar-item" onclick="navigateTo('orders')">
+      <i class="bi bi-bag-check"></i>
+      <span>My Orders</span>
+    </div>
     
     <div class="sidebar-item" onclick="navigateTo('cart')">
       <i class="bi bi-cart3"></i>
@@ -1172,114 +1186,6 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
       
     </div>
 
-
-<!-- ============================================
-     ORDERS PAGE (FOR SHOPOWNERS)
-     ============================================ -->
-     <div class="page-view" id="ordersPage" style="display: none;">
-  
-      <!-- Header -->
-      <div class="page-header" style="background: linear-gradient(135deg, #ff9800 0%, #f57c00 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <button class="btn btn-light" onclick="goBackFromOrders()" style="border-radius: 10px; font-weight: 600;">
-          <i class="bi bi-arrow-left me-2"></i>Back
-        </button>
-        <h3 style="margin: 0; font-weight: 700; flex: 1; text-align: center;">
-          <i class="bi bi-receipt me-2"></i><span id="ordersPageTitle">Shop Orders</span>
-        </h3>
-        <div style="width: 80px;"></div>
-      </div>
-      
-      <!-- Orders Content -->
-      <div class="container-fluid" style="padding: 20px;">
-        
-        <!-- Shop Info Card -->
-        <div id="ordersShopInfo" class="card mb-4" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: none;">
-          <!-- Will be populated -->
-        </div>
-        
-        <!-- Filter Tabs -->
-        <div class="mb-3">
-          <div class="btn-group w-100" role="group">
-            <button type="button" class="btn btn-outline-primary" onclick="filterOrders('all')" id="filterAll" style="border-radius: 10px 0 0 10px;">
-              All Orders
-            </button>
-            <button type="button" class="btn btn-outline-warning" onclick="filterOrders('pending')">
-              Pending
-            </button>
-            <button type="button" class="btn btn-outline-success" onclick="filterOrders('accepted')">
-              Accepted
-            </button>
-            <button type="button" class="btn btn-outline-info" onclick="filterOrders('delivered')" style="border-radius: 0 10px 10px 0;">
-              Delivered
-            </button>
-          </div>
-        </div>
-        
-        <!-- Orders List -->
-        <div id="ordersListContainer">
-          <!-- Orders will be rendered here -->
-          <div style="text-align: center; padding: 40px;">
-            <div class="spinner-border text-warning" role="status"></div>
-            <p class="mt-3">Loading orders...</p>
-          </div>
-        </div>
-        
-        <!-- Empty State -->
-        <div id="ordersEmptyState" style="display: none; text-align: center; padding: 60px 20px;">
-          <i class="bi bi-inbox" style="font-size: 64px; color: #ccc;"></i>
-          <h4 style="margin-top: 20px;">No Orders Yet</h4>
-          <p class="text-muted">Orders from customers will appear here.</p>
-        </div>
-        
-      </div>
-      
-    </div>
-    
-    <!-- ============================================
-         CUSTOMER ORDERS PAGE
-         ============================================ -->
-    <div class="page-view" id="customerOrdersPage" style="display: none;">
-      
-      <!-- Header -->
-      <div class="page-header" style="background: linear-gradient(135deg, #2196f3 0%, #1976d2 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
-        <button class="btn btn-light" onclick="goBackHome()" style="border-radius: 10px; font-weight: 600;">
-          <i class="bi bi-arrow-left me-2"></i>Back
-        </button>
-        <h3 style="margin: 0; font-weight: 700; flex: 1; text-align: center;">
-          <i class="bi bi-bag-check me-2"></i>My Orders
-        </h3>
-        <div style="width: 80px;"></div>
-      </div>
-      
-      <!-- Customer Orders Content -->
-      <div class="container-fluid" style="padding: 20px;">
-        
-        <!-- Customer Orders List -->
-        <div id="customerOrdersList">
-          <!-- Customer orders will be rendered here -->
-          <div style="text-align: center; padding: 40px;">
-            <div class="spinner-border text-primary" role="status"></div>
-            <p class="mt-3">Loading your orders...</p>
-          </div>
-        </div>
-        
-        <!-- Empty State -->
-        <div id="customerOrdersEmptyState" style="display: none; text-align: center; padding: 60px 20px;">
-          <i class="bi bi-bag-x" style="font-size: 64px; color: #ccc;"></i>
-          <h4 style="margin-top: 20px;">No Orders Yet</h4>
-          <p class="text-muted">Start shopping and place your first order!</p>
-          <button class="btn btn-success mt-3" onclick="goBackHome()" style="border-radius: 10px; padding: 10px 24px;">
-            <i class="bi bi-shop me-2"></i>Browse Shops
-          </button>
-        </div>
-        
-      </div>
-      
-    </div>
-    
-
-
-
     <!-- ============================================
      MINI-CART FOOTER (PERSISTENT)
      ============================================ -->
@@ -1512,243 +1418,6 @@ transition: transform 0.3s ease;
       </div>
     </div>
     
-    <!-- ============================================
-     CHECKOUT MODAL (CUSTOMERS ONLY)
-     ============================================ -->
-<div class="modal fade" id="checkoutModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
-  <div class="modal-dialog modal-dialog-centered modal-lg">
-    <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
-      
-      <!-- Modal Header -->
-      <div class="modal-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; border: none;">
-        <h5 class="modal-title" style="font-weight: 700;">
-          <i class="bi bi-check-circle me-2"></i>Checkout
-        </h5>
-        <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
-      </div>
-      
-      <!-- Modal Body -->
-      <div class="modal-body p-4">
-        
-        <!-- Step Indicator -->
-        <div class="mb-4">
-          <div style="display: flex; justify-content: space-between; align-items: center;">
-            <div style="flex: 1; text-align: center;">
-              <div class="step-circle active" id="step1Circle">1</div>
-              <small style="font-weight: 600;">Delivery Details</small>
-            </div>
-            <div style="flex: 0.5; height: 2px; background: #e0e0e0;" id="step1Line"></div>
-            <div style="flex: 1; text-align: center;">
-              <div class="step-circle" id="step2Circle">2</div>
-              <small style="font-weight: 600;">Order Summary</small>
-            </div>
-            <div style="flex: 0.5; height: 2px; background: #e0e0e0;" id="step2Line"></div>
-            <div style="flex: 1; text-align: center;">
-              <div class="step-circle" id="step3Circle">3</div>
-              <small style="font-weight: 600;">Confirm</small>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Step 1: Delivery Details -->
-        <div id="checkoutStep1" style="display: block;">
-          <h5 style="font-weight: 700; margin-bottom: 20px;">
-            <i class="bi bi-geo-alt text-danger me-2"></i>Delivery Address
-          </h5>
-          
-          <div class="alert alert-info" style="border-radius: 10px;">
-            <i class="bi bi-info-circle me-2"></i>
-            <strong>Note:</strong> We currently deliver only in <strong>Urban Estate 2, Hisar</strong>
-          </div>
-          
-          <form id="checkoutForm">
-            
-            <!-- Full Name -->
-            <div class="mb-3">
-              <label for="checkoutName" class="form-label" style="font-weight: 600;">
-                <i class="bi bi-person me-2"></i>Full Name <span style="color: red;">*</span>
-              </label>
-              <input 
-                type="text" 
-                class="form-control form-control-lg" 
-                id="checkoutName" 
-                placeholder="e.g., Rajesh Kumar"
-                required
-                style="border-radius: 10px;"
-              >
-            </div>
-            
-            <!-- Phone Number -->
-            <div class="mb-3">
-              <label for="checkoutPhone" class="form-label" style="font-weight: 600;">
-                <i class="bi bi-phone me-2"></i>Phone Number <span style="color: red;">*</span>
-              </label>
-              <input 
-                type="tel" 
-                class="form-control form-control-lg" 
-                id="checkoutPhone" 
-                placeholder="e.g., 9876543210"
-                required
-                pattern="[0-9]{10}"
-                maxlength="10"
-                style="border-radius: 10px;"
-              >
-              <small class="text-muted">10-digit mobile number</small>
-            </div>
-            
-            <!-- Address -->
-            <div class="mb-3">
-              <label for="checkoutAddress" class="form-label" style="font-weight: 600;">
-                <i class="bi bi-house me-2"></i>House/Flat Number <span style="color: red;">*</span>
-              </label>
-              <input 
-                type="text" 
-                class="form-control form-control-lg" 
-                id="checkoutAddress" 
-                placeholder="e.g., House No. 123, Block A"
-                required
-                style="border-radius: 10px;"
-              >
-            </div>
-            
-            <!-- Urban Estate 2 Confirmation -->
-            <div class="mb-3">
-              <label for="checkoutArea" class="form-label" style="font-weight: 600;">
-                <i class="bi bi-map me-2"></i>Area <span style="color: red;">*</span>
-              </label>
-              <input 
-                type="text" 
-                class="form-control form-control-lg" 
-                id="checkoutArea" 
-                value="Urban Estate 2, Hisar"
-                readonly
-                style="border-radius: 10px; background: #f8f9fa;"
-              >
-            </div>
-            
-            <!-- Landmark (Optional) -->
-            <div class="mb-3">
-              <label for="checkoutLandmark" class="form-label" style="font-weight: 600;">
-                <i class="bi bi-signpost me-2"></i>Landmark (Optional)
-              </label>
-              <input 
-                type="text" 
-                class="form-control form-control-lg" 
-                id="checkoutLandmark" 
-                placeholder="e.g., Near Park, Behind Market"
-                style="border-radius: 10px;"
-              >
-            </div>
-            
-          </form>
-        </div>
-        
-        <!-- Step 2: Order Summary -->
-        <div id="checkoutStep2" style="display: none;">
-          <h5 style="font-weight: 700; margin-bottom: 20px;">
-            <i class="bi bi-receipt text-success me-2"></i>Order Summary
-          </h5>
-          
-          <!-- Delivery Address Summary -->
-          <div class="card mb-3" style="border-radius: 10px; border: 1px solid #e0e0e0;">
-            <div class="card-body">
-              <h6 style="font-weight: 600; margin-bottom: 10px;">
-                <i class="bi bi-geo-alt text-danger me-2"></i>Delivering to:
-              </h6>
-              <div id="deliverySummary" style="color: #666;">
-                <!-- Will be populated -->
-              </div>
-            </div>
-          </div>
-          
-          <!-- Order Items -->
-          <div class="card mb-3" style="border-radius: 10px; border: 1px solid #e0e0e0;">
-            <div class="card-body">
-              <h6 style="font-weight: 600; margin-bottom: 10px;">
-                <i class="bi bi-cart text-success me-2"></i>Items:
-              </h6>
-              <div id="orderItemsSummary">
-                <!-- Will be populated -->
-              </div>
-            </div>
-          </div>
-          
-          <!-- Payment Method -->
-          <div class="card mb-3" style="border-radius: 10px; border: 1px solid #e0e0e0;">
-            <div class="card-body">
-              <h6 style="font-weight: 600; margin-bottom: 10px;">
-                <i class="bi bi-cash-coin text-warning me-2"></i>Payment Method:
-              </h6>
-              <div class="alert alert-warning mb-0" style="border-radius: 8px;">
-                <strong>Cash on Delivery (COD)</strong> - Pay when you receive your order
-              </div>
-            </div>
-          </div>
-          
-          <!-- Price Details -->
-          <div class="card" style="border-radius: 10px; border: 1px solid #e0e0e0;">
-            <div class="card-body">
-              <h6 style="font-weight: 600; margin-bottom: 15px;">Price Details:</h6>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span>Subtotal (<span id="summaryItemCountCheckout">0</span> items)</span>
-                <span id="summarySubtotalCheckout">₹0</span>
-              </div>
-              <div style="display: flex; justify-content: space-between; margin-bottom: 10px;">
-                <span>Delivery Fee</span>
-                <span style="color: #25D366; font-weight: 600;">FREE</span>
-              </div>
-              <hr>
-              <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 700;">
-                <span>Total Amount</span>
-                <span style="color: #25D366;" id="summaryTotalCheckout">₹0</span>
-              </div>
-            </div>
-          </div>
-        </div>
-        
-        <!-- Step 3: Confirmation -->
-        <div id="checkoutStep3" style="display: none;">
-          <div style="text-align: center; padding: 40px 20px;">
-            <i class="bi bi-check-circle" style="font-size: 64px; color: #25D366;"></i>
-            <h3 style="margin-top: 20px; font-weight: 700;">Order Placed Successfully!</h3>
-            <p style="font-size: 1.1rem; color: #666; margin-top: 15px;">
-              Your order has been placed successfully.<br>
-              Order ID: <strong id="confirmedOrderId">#ORD123456</strong>
-            </p>
-            <div class="alert alert-info mt-3" style="border-radius: 10px;">
-              <i class="bi bi-info-circle me-2"></i>
-              The shop owner will accept your order shortly and set a delivery time.
-            </div>
-          </div>
-        </div>
-        
-      </div>
-      
-      <!-- Modal Footer -->
-      <div class="modal-footer" style="border: none; padding: 20px;">
-        <button type="button" class="btn btn-secondary" id="checkoutBackBtn" onclick="checkoutBack()" style="border-radius: 10px; padding: 10px 24px; display: none;">
-          <i class="bi bi-arrow-left me-2"></i>Back
-        </button>
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" id="checkoutCancelBtn" style="border-radius: 10px; padding: 10px 24px;">
-          <i class="bi bi-x-circle me-2"></i>Cancel
-        </button>
-        <button type="button" class="btn btn-success" id="checkoutNextBtn" onclick="checkoutNext()" style="border-radius: 10px; padding: 10px 24px; font-weight: 600;">
-          Next <i class="bi bi-arrow-right ms-2"></i>
-        </button>
-        <button type="button" class="btn btn-success" id="checkoutConfirmBtn" onclick="confirmOrder()" style="border-radius: 10px; padding: 10px 24px; font-weight: 600; display: none;">
-          <i class="bi bi-check-circle me-2"></i>Place Order
-        </button>
-        <button type="button" class="btn btn-success" id="checkoutDoneBtn" onclick="closeCheckoutModal()" style="border-radius: 10px; padding: 10px 24px; font-weight: 600; display: none;">
-          <i class="bi bi-check-circle me-2"></i>Done
-        </button>
-      </div>
-      
-    </div>
-  </div>
-</div>
-
-
-
 
 <!-- ============================================
      JAVASCRIPT
@@ -1935,11 +1604,11 @@ function togglePasswordVisibility() {
     toggleIcon.classList.add('bi-eye');
   }
 }
-
 /**
- * Handle Sign Out
+ * Handle Sign Out (Updated for Anonymous Auth)
  */
-async function handleSignOut() {
+ async function handleSignOut() {
+  // Check if test user or guest
   if (window.currentUser && window.currentUser.isGuest) {
     // Guest mode - just reload page
     if (confirm('Return to login screen?')) {
@@ -1948,8 +1617,21 @@ async function handleSignOut() {
     return;
   }
 
+  // Real authenticated user (including anonymous test users)
   if (confirm('Are you sure you want to sign out?')) {
     try {
+      // Delete test user data from Firestore if it's a test user
+      if (window.currentUser && window.currentUser.isTestUser) {
+        try {
+          const { doc, deleteDoc } = window.firebaseImports;
+          await deleteDoc(doc(window.db, 'users', window.currentUser.uid));
+          console.log('✅ Test user deleted from Firestore');
+        } catch (error) {
+          console.warn('⚠️ Could not delete test user:', error);
+        }
+      }
+      
+      // Sign out from Firebase Auth
       await window.auth.signOut();
       console.log('✅ User signed out');
       location.reload();
@@ -1959,6 +1641,7 @@ async function handleSignOut() {
     }
   }
 }
+
 
 /**
  * ==========================================
@@ -3655,6 +3338,12 @@ function closeShopConflictModal() {
 }
 
 
+/**
+ * Proceed to Checkout
+ */
+function proceedToCheckout() {
+  alert('🚀 Checkout feature coming soon!\n\nThis will include:\n- Delivery address selection\n- Payment options\n- Order confirmation');
+}
 
 /**
  * Get Cart Item by Product ID
@@ -3837,839 +3526,199 @@ async function saveEditedProduct() {
   }
 }
 
-
 /**
- * ==========================================
- * CHECKOUT SYSTEM
- * ==========================================
+ * Test Login as Customer (FIXED with null checks)
  */
-
- let currentCheckoutStep = 1;
-
-/**
- * Proceed to Checkout
- */
-function proceedToCheckout() {
-  console.log('🛒 Proceeding to checkout');
-  
-  if (!window.currentUser || window.currentUser.role !== 'customer') {
-    alert('⚠️ Only customers can place orders. Please sign in as a customer.');
-    return;
-  }
-  
-  if (cart.items.length === 0) {
-    alert('⚠️ Your cart is empty!');
-    return;
-  }
-  
-  // Reset checkout step
-  currentCheckoutStep = 1;
-  
-  // Pre-fill user details if available
-  if (window.currentUser) {
-    document.getElementById('checkoutName').value = window.currentUser.displayName || '';
-    document.getElementById('checkoutPhone').value = window.currentUser.phoneNumber || window.currentUser.mobile || '';
-  }
-  
-  // Show checkout modal
-  const modal = new bootstrap.Modal(document.getElementById('checkoutModal'));
-  modal.show();
-  
-  // Update UI
-  updateCheckoutUI();
-}
-
-/**
- * Update Checkout UI
- */
-function updateCheckoutUI() {
-  // Update step circles
-  document.getElementById('step1Circle').className = currentCheckoutStep >= 1 ? 'step-circle active' : 'step-circle';
-  document.getElementById('step2Circle').className = currentCheckoutStep >= 2 ? 'step-circle active' : 'step-circle';
-  document.getElementById('step3Circle').className = currentCheckoutStep >= 3 ? 'step-circle active' : 'step-circle';
-  
-  // Update step lines
-  document.getElementById('step1Line').style.background = currentCheckoutStep >= 2 ? '#25D366' : '#e0e0e0';
-  document.getElementById('step2Line').style.background = currentCheckoutStep >= 3 ? '#25D366' : '#e0e0e0';
-  
-  // Show/hide steps
-  document.getElementById('checkoutStep1').style.display = currentCheckoutStep === 1 ? 'block' : 'none';
-  document.getElementById('checkoutStep2').style.display = currentCheckoutStep === 2 ? 'block' : 'none';
-  document.getElementById('checkoutStep3').style.display = currentCheckoutStep === 3 ? 'block' : 'none';
-  
-  // Show/hide buttons
-  document.getElementById('checkoutBackBtn').style.display = currentCheckoutStep === 2 ? 'inline-block' : 'none';
-  document.getElementById('checkoutCancelBtn').style.display = currentCheckoutStep === 3 ? 'none' : 'inline-block';
-  document.getElementById('checkoutNextBtn').style.display = currentCheckoutStep === 1 ? 'inline-block' : 'none';
-  document.getElementById('checkoutConfirmBtn').style.display = currentCheckoutStep === 2 ? 'inline-block' : 'none';
-  document.getElementById('checkoutDoneBtn').style.display = currentCheckoutStep === 3 ? 'inline-block' : 'none';
-  
-  // Populate step 2 if needed
-  if (currentCheckoutStep === 2) {
-    populateOrderSummary();
-  }
-}
-
-/**
- * Checkout Next
- */
-function checkoutNext() {
-  if (currentCheckoutStep === 1) {
-    // Validate delivery details
-    const name = document.getElementById('checkoutName').value.trim();
-    const phone = document.getElementById('checkoutPhone').value.trim();
-    const address = document.getElementById('checkoutAddress').value.trim();
-    
-    if (!name || name.length === 0) {
-      alert('⚠️ Please enter your full name!');
-      document.getElementById('checkoutName').focus();
-      return;
-    }
-    
-    if (!phone || phone.length !== 10 || !/^[0-9]{10}$/.test(phone)) {
-      alert('⚠️ Please enter a valid 10-digit phone number!');
-      document.getElementById('checkoutPhone').focus();
-      return;
-    }
-    
-    if (!address || address.length === 0) {
-      alert('⚠️ Please enter your house/flat number!');
-      document.getElementById('checkoutAddress').focus();
-      return;
-    }
-    
-    // Move to step 2
-    currentCheckoutStep = 2;
-    updateCheckoutUI();
-  }
-}
-
-/**
- * Checkout Back
- */
-function checkoutBack() {
-  if (currentCheckoutStep > 1) {
-    currentCheckoutStep--;
-    updateCheckoutUI();
-  }
-}
-
-/**
- * Populate Order Summary
- */
-function populateOrderSummary() {
-  // Delivery address
-  const name = document.getElementById('checkoutName').value;
-  const phone = document.getElementById('checkoutPhone').value;
-  const address = document.getElementById('checkoutAddress').value;
-  const area = document.getElementById('checkoutArea').value;
-  const landmark = document.getElementById('checkoutLandmark').value;
-  
-  const deliverySummary = document.getElementById('deliverySummary');
-  deliverySummary.innerHTML = `
-    <strong>${escapeHtml(name)}</strong><br>
-    ${escapeHtml(address)}<br>
-    ${escapeHtml(area)}<br>
-    ${landmark ? `Landmark: ${escapeHtml(landmark)}<br>` : ''}
-    <i class="bi bi-phone me-2"></i>${escapeHtml(phone)}
-  `;
-  
-  // Order items
-  const orderItemsSummary = document.getElementById('orderItemsSummary');
-  let itemsHtml = '';
-  cart.items.forEach(item => {
-    itemsHtml += `
-      <div style="display: flex; justify-content: space-between; margin-bottom: 10px; padding-bottom: 10px; border-bottom: 1px solid #f0f0f0;">
-        <div>
-          <strong>${escapeHtml(item.name)}</strong><br>
-          <small class="text-muted">Qty: ${item.quantity} × ₹${item.price.toFixed(2)}</small>
-        </div>
-        <div style="font-weight: 600;">
-          ₹${(item.quantity * item.price).toFixed(2)}
-        </div>
-      </div>
-    `;
-  });
-  orderItemsSummary.innerHTML = itemsHtml;
-  
-  // Price details
-  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
-  const subtotal = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
-  
-  document.getElementById('summaryItemCountCheckout').textContent = totalItems;
-  document.getElementById('summarySubtotalCheckout').textContent = `₹${subtotal.toFixed(2)}`;
-  document.getElementById('summaryTotalCheckout').textContent = `₹${subtotal.toFixed(2)}`;
-}
-
-/**
- * Confirm Order
- */
-async function confirmOrder() {
-  console.log('📦 Placing order...');
+ async function testLoginAsCustomer() {
+  console.log('🧪 TEST LOGIN: Customer');
   
   try {
-    showSyncIndicator('Placing order...', null);
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
     
-    const { collection, addDoc } = window.firebaseImports;
+    const { signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js');
+    const { doc, setDoc, serverTimestamp } = window.firebaseImports;
     
-    // Prepare order data
-    const orderData = {
-      orderId: 'ORD' + Date.now(),
-      customerId: window.currentUser.uid,
-      customerName: document.getElementById('checkoutName').value.trim(),
-      customerPhone: document.getElementById('checkoutPhone').value.trim(),
-      deliveryAddress: {
-        name: document.getElementById('checkoutName').value.trim(),
-        phone: document.getElementById('checkoutPhone').value.trim(),
-        address: document.getElementById('checkoutAddress').value.trim(),
-        area: document.getElementById('checkoutArea').value.trim(),
-        landmark: document.getElementById('checkoutLandmark').value.trim()
-      },
-      shopId: cart.shopId,
-      shopName: cart.shopName,
-      shopOwnerId: cart.shopOwnerId,
-      items: cart.items.map(item => ({
-        id: item.id,
-        name: item.name,
-        price: item.price,
-        quantity: item.quantity,
-        brand: item.brand || '',
-        size: item.size || ''
-      })),
-      subtotal: cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-      deliveryFee: 0,
-      total: cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0),
-      paymentMethod: 'COD',
-      status: 'pending',
-      deliveryTime: null,
-      placedAt: new Date().toISOString(),
-      acceptedAt: null,
-      deliveredAt: null
+    // Sign in anonymously
+    const userCredential = await signInAnonymously(window.auth);
+    const user = userCredential.user;
+    
+    console.log('✅ Anonymous auth successful:', user.uid);
+    
+    // ✅ Generate safe email
+    const testEmail = `testcustomer_${user.uid.slice(0, 8)}@ue2shop.test`;
+    
+    // Create test customer document
+    const userDocRef = doc(window.db, 'users', user.uid);
+    await setDoc(userDocRef, {
+      email: testEmail,
+      displayName: 'Test Customer',
+      photoURL: 'https://ui-avatars.com/api/?name=Test+Customer&background=0d6efd&color=fff',
+      location: 'Urban Estate 2, Hisar',
+      role: 'customer',
+      isTestUser: true,
+      isAnonymous: true,
+      mobile: '9876543210',
+      address: 'Test Address, Urban Estate 2',
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp()
+    });
+    
+    console.log('✅ Test customer created in Firestore');
+    
+    // ✅ Set window.currentUser with all required fields
+    window.currentUser = {
+      email: testEmail,
+      uid: user.uid,
+      displayName: 'Test Customer',
+      photoURL: 'https://ui-avatars.com/api/?name=Test+Customer&background=0d6efd&color=fff',
+      role: 'customer',
+      isTestUser: true,
+      isAnonymous: true,
+      mobile: '9876543210',
+      address: 'Test Address, Urban Estate 2'
     };
     
-    // Save to Firebase: shops/{shopId}/orders
-    const ordersRef = collection(window.db, 'shops', cart.shopId, 'orders');
-    await addDoc(ordersRef, orderData);
+    console.log('✅ Logged in as Test Customer:', window.currentUser);
     
-    console.log('✅ Order placed successfully:', orderData.orderId);
-    
-    // Show order ID
-    document.getElementById('confirmedOrderId').textContent = orderData.orderId;
-    
-    // Move to step 3
-    currentCheckoutStep = 3;
-    updateCheckoutUI();
-    
-    // Clear cart
-    clearCart();
-    
-    showSyncIndicator('Order placed!', 2000);
+    // Success message
+    setTimeout(() => {
+      alert('✅ Logged in as Test Customer!\n\nYou can now:\n• Browse products\n• Add items to cart\n• Place orders\n• View order history');
+    }, 500);
     
   } catch (error) {
-    console.error('❌ Error placing order:', error);
-    showSyncIndicator('Order failed', 1500);
-    alert('❌ Error placing order: ' + error.message);
-  }
-}
-
-/**
- * Close Checkout Modal
- */
-function closeCheckoutModal() {
-  const modal = bootstrap.Modal.getInstance(document.getElementById('checkoutModal'));
-  if (modal) modal.hide();
-  
-  // Reset
-  currentCheckoutStep = 1;
-  updateCheckoutUI();
-  
-  // Go to customer orders page
-  if (typeof navigateToCustomerOrders === 'function') {
-    navigateToCustomerOrders();
-  } else {
-    goBackHome();
-  }
-}
-
-
-/**
- * ==========================================
- * ORDERS MANAGEMENT SYSTEM
- * ==========================================
- */
-
- let currentShopOrders = [];
-let currentOrderFilter = 'all';
-
-/**
- * Navigate to Shop Orders Page
- */
-async function navigateToShopOrders(shopId, shopName) {
-  console.log('📦 Navigating to orders for shop:', shopId, shopName);
-  
-  // Check if shopowner
-  if (!window.currentUser || window.currentUser.role !== 'shopowner') {
-    alert('⚠️ Only shopowners can view orders.');
-    return;
-  }
-  
-  // Store current shop data
-  currentShopData = cachedShops.find(shop => shop.id === shopId);
-  
-  if (!currentShopData) {
-    alert('❌ Shop not found!');
-    return;
-  }
-  
-  // Check ownership
-  if (currentShopData.ownerId !== window.currentUser.uid) {
-    alert('⚠️ You can only view orders for your own shop.');
-    return;
-  }
-  
-  // Hide other pages
-  const mainApp = document.getElementById('mainApp');
-  const ordersPage = document.getElementById('ordersPage');
-  
-  if (mainApp) mainApp.style.display = 'none';
-  if (ordersPage) {
-    ordersPage.style.display = 'block';
-    ordersPage.classList.add('active');
-  }
-  
-  // Update page title
-  document.getElementById('ordersPageTitle').textContent = `${shopName} - Orders`;
-  
-  // Render shop info
-  const ordersShopInfo = document.getElementById('ordersShopInfo');
-  if (ordersShopInfo) {
-    ordersShopInfo.style.display = 'block';
-    ordersShopInfo.innerHTML = `
-      <div class="card-body">
-        <h5 style="font-weight: 700; margin-bottom: 10px;">
-          <i class="bi bi-shop"></i> ${escapeHtml(shopName)}
-        </h5>
-        <p class="text-muted mb-0" style="font-size: 0.9rem;">
-          <i class="bi bi-info-circle"></i> Manage orders from customers
-        </p>
-      </div>
-    `;
-  }
-  
-  // Load orders
-  await loadShopOrders(shopId);
-  
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  window.location.hash = '#shop-orders/' + shopId;
-}
-
-/**
- * Load Shop Orders from Firebase
- */
-async function loadShopOrders(shopId) {
-  console.log('🔄 Loading orders for shop:', shopId);
-  
-  const ordersContainer = document.getElementById('ordersListContainer');
-  const emptyState = document.getElementById('ordersEmptyState');
-  
-  if (!ordersContainer) return;
-  
-  // Show loading
-  ordersContainer.innerHTML = `
-    <div style="text-align: center; padding: 40px;">
-      <div class="spinner-border text-warning" role="status"></div>
-      <p class="mt-3">Loading orders...</p>
-    </div>
-  `;
-  
-  try {
-    const { collection, getDocs, query, orderBy } = window.firebaseImports;
+    console.error('❌ Test login error:', error);
+    alert('❌ Test login failed: ' + error.message);
     
-    // Load orders from shops/{shopId}/orders
-    const ordersRef = collection(window.db, 'shops', shopId, 'orders');
-    const ordersSnap = await getDocs(ordersRef);
-    
-    currentShopOrders = [];
-    ordersSnap.forEach((doc) => {
-      currentShopOrders.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    
-    // Sort by placedAt (newest first)
-    currentShopOrders.sort((a, b) => {
-      const dateA = new Date(a.placedAt).getTime();
-      const dateB = new Date(b.placedAt).getTime();
-      return dateB - dateA;
-    });
-    
-    console.log(`✅ Loaded ${currentShopOrders.length} orders`);
-    
-    // Render orders
-    renderShopOrders();
-    
-  } catch (error) {
-    console.error('❌ Error loading orders:', error);
-    ordersContainer.innerHTML = `
-      <div class="alert alert-danger" style="border-radius: 12px;">
-        <i class="bi bi-exclamation-triangle me-2"></i>
-        <strong>Error loading orders:</strong> ${error.message}
-      </div>
-    `;
-  }
-}
-
-/**
- * Filter Orders
- */
-function filterOrders(filter) {
-  console.log('🔍 Filtering orders:', filter);
-  currentOrderFilter = filter;
-  
-  // Update button states
-  document.querySelectorAll('#ordersPage .btn-group button').forEach(btn => {
-    btn.classList.remove('active');
-  });
-  document.getElementById('filter' + filter.charAt(0).toUpperCase() + filter.slice(1))?.classList.add('active');
-  
-  renderShopOrders();
-}
-
-/**
- * Render Shop Orders
- */
-function renderShopOrders() {
-  const ordersContainer = document.getElementById('ordersListContainer');
-  const emptyState = document.getElementById('ordersEmptyState');
-  
-  if (!ordersContainer) return;
-  
-  // Filter orders
-  let filteredOrders = currentShopOrders;
-  if (currentOrderFilter !== 'all') {
-    filteredOrders = currentShopOrders.filter(order => order.status === currentOrderFilter);
-  }
-  
-  if (filteredOrders.length === 0) {
-    ordersContainer.innerHTML = '';
-    if (emptyState) emptyState.style.display = 'block';
-    return;
-  }
-  
-  if (emptyState) emptyState.style.display = 'none';
-  
-  let html = '';
-  filteredOrders.forEach(order => {
-    const statusClass = order.status || 'pending';
-    const statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
-    
-    html += `
-      <div class="order-card ${statusClass}">
-        
-        <!-- Order Header -->
-        <div style="display: flex; justify-content: space-between; align-items: start; margin-bottom: 15px;">
-          <div>
-            <h5 style="font-weight: 700; margin-bottom: 5px;">
-              <i class="bi bi-receipt"></i> ${escapeHtml(order.orderId)}
-            </h5>
-            <p class="text-muted mb-0" style="font-size: 0.85rem;">
-              <i class="bi bi-clock"></i> ${formatDate(order.placedAt)}
-            </p>
-          </div>
-          <span class="status-badge ${statusClass}">${statusText}</span>
-        </div>
-        
-        <!-- Customer Info -->
-        <div class="card mb-3" style="background: #f8f9fa; border: none; border-radius: 8px;">
-          <div class="card-body" style="padding: 12px;">
-            <h6 style="font-weight: 600; margin-bottom: 8px;">
-              <i class="bi bi-person-circle text-primary"></i> Customer Details
-            </h6>
-            <p class="mb-1"><strong>${escapeHtml(order.customerName)}</strong></p>
-            <p class="mb-1"><i class="bi bi-phone"></i> ${escapeHtml(order.customerPhone)}</p>
-            <p class="mb-0"><i class="bi bi-geo-alt"></i> ${escapeHtml(order.deliveryAddress.address)}, ${escapeHtml(order.deliveryAddress.area)}</p>
-            ${order.deliveryAddress.landmark ? `<p class="mb-0 text-muted" style="font-size: 0.85rem;">Landmark: ${escapeHtml(order.deliveryAddress.landmark)}</p>` : ''}
-          </div>
-        </div>
-        
-        <!-- Order Items -->
-        <div class="mb-3">
-          <h6 style="font-weight: 600; margin-bottom: 10px;">
-            <i class="bi bi-cart text-success"></i> Order Items (${order.items.length})
-          </h6>
-          ${order.items.map(item => `
-            <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
-              <div>
-                <strong>${escapeHtml(item.name)}</strong>
-                <small class="text-muted d-block">Qty: ${item.quantity}</small>
-              </div>
-              <span style="font-weight: 600;">₹${(item.price * item.quantity).toFixed(2)}</span>
-            </div>
-          `).join('')}
-        </div>
-        
-        <!-- Total -->
-        <div style="display: flex; justify-content: space-between; align-items: center; padding: 15px; background: #f8f9fa; border-radius: 8px; margin-bottom: 15px;">
-          <span style="font-weight: 600;">Total Amount:</span>
-          <span style="font-size: 1.3rem; font-weight: 700; color: #25D366;">₹${order.total.toFixed(2)}</span>
-        </div>
-        
-        <!-- Payment Method -->
-        <div class="alert alert-warning mb-3" style="padding: 10px; border-radius: 8px; font-size: 0.85rem;">
-          <i class="bi bi-cash-coin"></i> Payment: <strong>Cash on Delivery (COD)</strong>
-        </div>
-        
-        ${order.status === 'pending' ? `
-          <!-- Accept Order Form -->
-          <div class="card" style="background: #fff3e0; border: 2px solid #ff9800; border-radius: 8px;">
-            <div class="card-body">
-              <h6 style="font-weight: 600; margin-bottom: 15px;">
-                <i class="bi bi-clock-history"></i> Set Delivery Time
-              </h6>
-              <div class="mb-3">
-                <label class="form-label" style="font-weight: 600;">Estimated delivery time (minutes)</label>
-                <input 
-                  type="number" 
-                  class="form-control" 
-                  id="deliveryTime_${order.id}" 
-                  placeholder="e.g., 30"
-                  min="10"
-                  max="300"
-                  value="30"
-                  style="border-radius: 8px;"
-                >
-                <small class="text-muted">How many minutes will it take to deliver?</small>
-              </div>
-              <button 
-                class="btn btn-success w-100" 
-                onclick="acceptOrder('${order.id}')"
-                style="border-radius: 8px; padding: 12px; font-weight: 600;">
-                <i class="bi bi-check-circle me-2"></i>Accept Order & Start Preparing
-              </button>
-            </div>
-          </div>
-        ` : order.status === 'accepted' ? `
-          <!-- Delivery Info -->
-          <div class="alert alert-success" style="border-radius: 8px;">
-            <i class="bi bi-check-circle me-2"></i>
-            <strong>Order Accepted!</strong><br>
-            Estimated delivery: ${order.deliveryTime} minutes<br>
-            Accepted at: ${formatDate(order.acceptedAt)}
-          </div>
-          <button 
-            class="btn btn-primary w-100" 
-            onclick="markAsDelivered('${order.id}')"
-            style="border-radius: 8px; padding: 12px; font-weight: 600;">
-            <i class="bi bi-check2-all me-2"></i>Mark as Delivered
-          </button>
-        ` : `
-          <!-- Delivered -->
-          <div class="alert alert-info" style="border-radius: 8px;">
-            <i class="bi bi-check2-all me-2"></i>
-            <strong>Order Delivered!</strong><br>
-            Delivered at: ${formatDate(order.deliveredAt)}
-          </div>
-        `}
-        
-      </div>
-    `;
-  });
-  
-  ordersContainer.innerHTML = html;
-  console.log(`✅ Rendered ${filteredOrders.length} orders`);
-}
-
-/**
- * Accept Order
- */
-async function acceptOrder(orderId) {
-  console.log('✅ Accepting order:', orderId);
-  
-  const deliveryTimeInput = document.getElementById('deliveryTime_' + orderId);
-  if (!deliveryTimeInput) return;
-  
-  const deliveryTime = parseInt(deliveryTimeInput.value);
-  
-  if (!deliveryTime || deliveryTime < 10) {
-    alert('⚠️ Please enter a valid delivery time (minimum 10 minutes)');
-    deliveryTimeInput.focus();
-    return;
-  }
-  
-  try {
-    showSyncIndicator('Accepting order...', null);
-    
-    const { doc, updateDoc } = window.firebaseImports;
-    
-    // Update order status
-    const orderRef = doc(window.db, 'shops', currentShopData.id, 'orders', orderId);
-    await updateDoc(orderRef, {
-      status: 'accepted',
-      deliveryTime: deliveryTime,
-      acceptedAt: new Date().toISOString()
-    });
-    
-    console.log('✅ Order accepted successfully');
-    
-    // Update local cache
-    const orderIndex = currentShopOrders.findIndex(o => o.id === orderId);
-    if (orderIndex !== -1) {
-      currentShopOrders[orderIndex].status = 'accepted';
-      currentShopOrders[orderIndex].deliveryTime = deliveryTime;
-      currentShopOrders[orderIndex].acceptedAt = new Date().toISOString();
+    if (event && event.target) {
+      event.target.disabled = false;
+      event.target.innerHTML = '<i class="bi bi-person-circle me-2"></i>Test Login as Customer';
     }
-    
-    // Re-render
-    renderShopOrders();
-    
-    showSyncIndicator('Order accepted!', 2000);
-    
-    alert(`✅ Order Accepted!\n\nDelivery time: ${deliveryTime} minutes\n\nThe customer has been notified.`);
-    
-  } catch (error) {
-    console.error('❌ Error accepting order:', error);
-    showSyncIndicator('Failed to accept', 1500);
-    alert('❌ Error accepting order: ' + error.message);
   }
 }
 
 /**
- * Mark Order as Delivered
+ * Test Login as Shopowner (FIXED with null checks)
  */
-async function markAsDelivered(orderId) {
-  const confirmed = confirm('Mark this order as delivered?\n\nThis action cannot be undone.');
-  
-  if (!confirmed) return;
+async function testLoginAsShopowner() {
+  console.log('🧪 TEST LOGIN: Shopowner');
   
   try {
-    showSyncIndicator('Updating status...', null);
+    const btn = event.target;
+    btn.disabled = true;
+    btn.innerHTML = '<span class="spinner-border spinner-border-sm me-2"></span>Logging in...';
     
-    const { doc, updateDoc } = window.firebaseImports;
+    const { signInAnonymously } = await import('https://www.gstatic.com/firebasejs/10.7.0/firebase-auth.js');
+    const { doc, setDoc, serverTimestamp } = window.firebaseImports;
     
-    // Update order status
-    const orderRef = doc(window.db, 'shops', currentShopData.id, 'orders', orderId);
-    await updateDoc(orderRef, {
-      status: 'delivered',
-      deliveredAt: new Date().toISOString()
+    // Sign in anonymously
+    const userCredential = await signInAnonymously(window.auth);
+    const user = userCredential.user;
+    
+    console.log('✅ Anonymous auth successful:', user.uid);
+    
+    // ✅ Generate safe email
+    const testEmail = `testshopowner_${user.uid.slice(0, 8)}@ue2shop.test`;
+    
+    // Create test shopowner document
+    const userDocRef = doc(window.db, 'users', user.uid);
+    await setDoc(userDocRef, {
+      email: testEmail,
+      displayName: 'Test Shopowner',
+      photoURL: 'https://ui-avatars.com/api/?name=Test+Shopowner&background=ffc107&color=000',
+      location: 'Urban Estate 2, Hisar',
+      role: 'shopowner',
+      isTestUser: true,
+      isAnonymous: true,
+      mobile: '9876543210',
+      createdAt: serverTimestamp(),
+      lastLogin: serverTimestamp()
     });
     
-    console.log('✅ Order marked as delivered');
+    console.log('✅ Test shopowner created in Firestore');
     
-    // Update local cache
-    const orderIndex = currentShopOrders.findIndex(o => o.id === orderId);
-    if (orderIndex !== -1) {
-      currentShopOrders[orderIndex].status = 'delivered';
-      currentShopOrders[orderIndex].deliveredAt = new Date().toISOString();
-    }
+    // ✅ Set window.currentUser with all required fields
+    window.currentUser = {
+      email: testEmail,
+      uid: user.uid,
+      displayName: 'Test Shopowner',
+      photoURL: 'https://ui-avatars.com/api/?name=Test+Shopowner&background=ffc107&color=000',
+      role: 'shopowner',
+      isTestUser: true,
+      isAnonymous: true,
+      mobile: '9876543210'
+    };
     
-    // Re-render
-    renderShopOrders();
+    console.log('✅ Logged in as Test Shopowner:', window.currentUser);
     
-    showSyncIndicator('Order delivered!', 2000);
-    
-    alert('✅ Order marked as delivered successfully!');
+    // Success message
+    setTimeout(() => {
+      alert('✅ Logged in as Test Shopowner!\n\nYou can now:\n• Register your shop\n• Add products\n• Manage orders\n• Edit shop details');
+    }, 500);
     
   } catch (error) {
-    console.error('❌ Error updating order:', error);
-    showSyncIndicator('Update failed', 1500);
-    alert('❌ Error updating order: ' + error.message);
-  }
-}
-
-/**
- * Go Back from Orders Page
- */
-function goBackFromOrders() {
-  const ordersPage = document.getElementById('ordersPage');
-  if (ordersPage) {
-    ordersPage.style.display = 'none';
-    ordersPage.classList.remove('active');
-  }
-  
-  goBackHome();
-}
-
-/**
- * Navigate to Customer Orders
- */
-async function navigateToCustomerOrders() {
-  console.log('👤 Navigating to customer orders');
-  
-  if (!window.currentUser || window.currentUser.role !== 'customer') {
-    alert('⚠️ Only customers can view their orders.');
-    return;
-  }
-  
-  // Hide other pages
-  const mainApp = document.getElementById('mainApp');
-  const customerOrdersPage = document.getElementById('customerOrdersPage');
-  
-  if (mainApp) mainApp.style.display = 'none';
-  if (customerOrdersPage) {
-    customerOrdersPage.style.display = 'block';
-    customerOrdersPage.classList.add('active');
-  }
-  
-  // Load customer orders
-  await loadCustomerOrders();
-  
-  window.scrollTo({ top: 0, behavior: 'smooth' });
-  window.location.hash = '#my-orders';
-}
-
-/**
- * Load Customer Orders
- */
-async function loadCustomerOrders() {
-  console.log('🔄 Loading customer orders...');
-  
-  const ordersList = document.getElementById('customerOrdersList');
-  const emptyState = document.getElementById('customerOrdersEmptyState');
-  
-  if (!ordersList) return;
-  
-  // Show loading
-  ordersList.innerHTML = `
-    <div style="text-align: center; padding: 40px;">
-      <div class="spinner-border text-primary" role="status"></div>
-      <p class="mt-3">Loading your orders...</p>
-    </div>
-  `;
-  
-  try {
-    const { collectionGroup, query, where, getDocs } = window.firebaseImports;
+    console.error('❌ Test login error:', error);
+    alert('❌ Test login failed: ' + error.message);
     
-    // Query all orders across all shops where customerId matches
-    const ordersQuery = query(
-      collectionGroup(window.db, 'orders'),
-      where('customerId', '==', window.currentUser.uid)
-    );
-    
-    const ordersSnap = await getDocs(ordersQuery);
-    
-    let customerOrders = [];
-    ordersSnap.forEach((doc) => {
-      customerOrders.push({
-        id: doc.id,
-        ...doc.data()
-      });
-    });
-    
-    // Sort by placedAt (newest first)
-    customerOrders.sort((a, b) => {
-      const dateA = new Date(a.placedAt).getTime();
-      const dateB = new Date(b.placedAt).getTime();
-      return dateB - dateA;
-    });
-    
-    console.log(`✅ Loaded ${customerOrders.length} customer orders`);
-    
-    if (customerOrders.length === 0) {
-      ordersList.innerHTML = '';
-      if (emptyState) emptyState.style.display = 'block';
-      return;
+    if (event && event.target) {
+      event.target.disabled = false;
+      event.target.innerHTML = '<i class="bi bi-shop me-2"></i>Test Login as Shopowner';
     }
-    
-    if (emptyState) emptyState.style.display = 'none';
-    
-    // Render customer orders
-    let html = '';
-    customerOrders.forEach(order => {
-      const statusClass = order.status || 'pending';
-      const statusText = statusClass.charAt(0).toUpperCase() + statusClass.slice(1);
-      
-      html += `
-        <div class="order-card ${statusClass}">
-          
-          <!-- Order Header -->
-          <div style="display: flex; justify-content: between; align-items: start; margin-bottom: 15px;">
-            <div style="flex: 1;">
-              <h5 style="font-weight: 700; margin-bottom: 5px;">
-                <i class="bi bi-receipt"></i> ${escapeHtml(order.orderId)}
-              </h5>
-              <p class="text-muted mb-1" style="font-size: 0.85rem;">
-                <i class="bi bi-shop"></i> ${escapeHtml(order.shopName)}
-              </p>
-              <p class="text-muted mb-0" style="font-size: 0.85rem;">
-                <i class="bi bi-clock"></i> ${formatDate(order.placedAt)}
-              </p>
-            </div>
-            <span class="status-badge ${statusClass}">${statusText}</span>
-          </div>
-          
-          <!-- Order Items -->
-          <div class="mb-3">
-            ${order.items.map(item => `
-              <div style="display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid #f0f0f0;">
-                <div>
-                  <strong>${escapeHtml(item.name)}</strong>
-                  <small class="text-muted d-block">Qty: ${item.quantity}</small>
-                </div>
-                <span style="font-weight: 600;">₹${(item.price * item.quantity).toFixed(2)}</span>
-              </div>
-            `).join('')}
-          </div>
-          
-          <!-- Total -->
-          <div style="display: flex; justify-content: space-between; align-items: center; padding: 12px; background: #f8f9fa; border-radius: 8px; margin-bottom: 15px;">
-            <span style="font-weight: 600;">Total:</span>
-            <span style="font-size: 1.2rem; font-weight: 700; color: #25D366;">₹${order.total.toFixed(2)}</span>
-          </div>
-          
-          <!-- Status Info -->
-          ${order.status === 'pending' ? `
-            <div class="alert alert-warning" style="border-radius: 8px; margin-bottom: 0;">
-              <i class="bi bi-hourglass-split me-2"></i>
-              <strong>Waiting for shop to accept...</strong>
-            </div>
-          ` : order.status === 'accepted' ? `
-            <div class="alert alert-success" style="border-radius: 8px; margin-bottom: 0;">
-              <i class="bi bi-check-circle me-2"></i>
-              <strong>Order Accepted!</strong><br>
-              Estimated delivery: ${order.deliveryTime} minutes<br>
-              <small class="text-muted">The shop is preparing your order</small>
-            </div>
-          ` : `
-            <div class="alert alert-info" style="border-radius: 8px; margin-bottom: 0;">
-              <i class="bi bi-check2-all me-2"></i>
-              <strong>Order Delivered!</strong><br>
-              Delivered at: ${formatDate(order.deliveredAt)}
-            </div>
-          `}
-          
-        </div>
-      `;
-    });
-    
-    ordersList.innerHTML = html;
-    
-  } catch (error) {
-    console.error('❌ Error loading customer orders:', error);
-    ordersList.innerHTML = `
-      <div class="alert alert-danger" style="border-radius: 12px;">
-        <i class="bi bi-exclamation-triangle me-2"></i>
-        <strong>Error loading orders:</strong> ${error.message}
-      </div>
-    `;
   }
 }
 
+
 /**
- * Format Date Helper
+ * Skip Login (Updated - Guest Mode)
  */
-function formatDate(dateString) {
-  if (!dateString) return 'N/A';
-  const date = new Date(dateString);
-  return date.toLocaleString('en-IN', {
-    day: '2-digit',
-    month: 'short',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: true
-  });
+function skipLogin() {
+  console.log('⏭️ Skipping login - Guest mode');
+
+  // Set temporary guest user
+  window.currentUser = {
+    email: 'guest@ue2shop.local',
+    uid: 'guest_' + Date.now(),
+    displayName: 'Guest User',
+    photoURL: null,
+    role: 'guest',
+    isGuest: true
+  };
+
+  // Hide auth screen and show app
+  document.getElementById('authScreen').style.display = 'none';
+  document.getElementById('mainApp').style.display = 'block';
+
+  // Update UI
+  if (typeof updateUserInfo === 'function') {
+    updateUserInfo();
+  }
+  
+  // Update sidebar
+  if (typeof updateSidebarForUser === 'function') {
+    updateSidebarForUser();
+  }
+  
+  if (typeof renderSidebarMenu === 'function') {
+    renderSidebarMenu();
+  }
+  
+  // Load shops
+  setTimeout(async () => {
+    if (typeof loadAllShops === 'function') {
+      await loadAllShops();
+    }
+    if (typeof renderShopsOnHomepage === 'function') {
+      await renderShopsOnHomepage();
+    }
+  }, 500);
+
+  // Show notification
+  setTimeout(() => {
+    alert('⚠️ Guest Mode: You are browsing without authentication.\n\nSign in with Google or Email to place orders.');
+  }, 1000);
 }
+
 
 
 </script>
