@@ -37,6 +37,7 @@
   getDocs,
   setDoc,
   addDoc,
+  updateDoc,
   query,
   where,
   serverTimestamp
@@ -61,7 +62,7 @@
       window.auth = auth;
       window.db = db;
       window.firebaseImports = {
-  collection, doc, getDoc, getDocs, setDoc, addDoc, query, where, serverTimestamp,
+  collection, doc, getDoc, getDocs, setDoc, addDoc, updateDoc, query, where, serverTimestamp,
   signInWithPopup, signInWithEmailAndPassword, GoogleAuthProvider, 
   onAuthStateChanged, signOut
 };
@@ -1097,8 +1098,309 @@ style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); padding: 1
   </div>
 </div>
 
+<!-- ============================================
+     CART PAGE (FOR CUSTOMERS)
+     ============================================ -->
+     <div class="page-view" id="cartPage" style="display: none;">
+  
+      <!-- Header -->
+      <div class="page-header" style="background: linear-gradient(135deg, #25D366 0%, #128C7E 100%); color: white; padding: 15px 20px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1000; box-shadow: 0 2px 8px rgba(0,0,0,0.1);">
+        <button class="btn btn-light" onclick="goBackFromCart()" style="border-radius: 10px; font-weight: 600;">
+          <i class="bi bi-arrow-left me-2"></i>Back
+        </button>
+        <h3 style="margin: 0; font-weight: 700; flex: 1; text-align: center;">
+          <i class="bi bi-cart me-2"></i>Shopping Cart
+        </h3>
+        <div style="width: 80px;"></div> <!-- Spacer -->
+      </div>
+      
+      <!-- Cart Content -->
+      <div class="container-fluid" style="padding: 20px; padding-bottom: 100px;">
+        
+        <!-- Shop Info Card (Shows which shop items are from) -->
+        <div id="cartShopInfo" class="card mb-4" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: none;">
+          <!-- Will be populated dynamically -->
+        </div>
+        
+        <!-- Cart Items List -->
+        <div id="cartItemsList" class="mb-4">
+          <!-- Cart items will be rendered here -->
+        </div>
+        
+        <!-- Empty Cart State -->
+        <div id="emptyCartState" style="display: none; text-align: center; padding: 60px 20px;">
+          <i class="bi bi-cart-x" style="font-size: 64px; color: #ccc;"></i>
+          <h4 style="margin-top: 20px;">Your cart is empty</h4>
+          <p class="text-muted">Add products from shops to get started!</p>
+          <button class="btn btn-success mt-3" onclick="goBackHome()" style="border-radius: 10px; padding: 10px 24px;">
+            <i class="bi bi-shop me-2"></i>Browse Shops
+          </button>
+        </div>
+        
+        <!-- Cart Summary Card -->
+        <div id="cartSummary" class="card" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); display: none;">
+          <div class="card-body">
+            <h5 style="font-weight: 700; margin-bottom: 20px;">Price Details</h5>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span>Price (<span id="summaryItemCount">0</span> items)</span>
+              <span id="summarySubtotal">₹0</span>
+            </div>
+            
+            <div style="display: flex; justify-content: space-between; margin-bottom: 12px;">
+              <span>Delivery Charges</span>
+              <span id="summaryDelivery" style="color: #25D366;">FREE</span>
+            </div>
+            
+            <hr>
+            
+            <div style="display: flex; justify-content: space-between; font-size: 1.2rem; font-weight: 700;">
+              <span>Total Amount</span>
+              <span style="color: #25D366;" id="summaryTotal">₹0</span>
+            </div>
+            
+            <button class="btn btn-success w-100 mt-3" onclick="proceedToCheckout()" style="border-radius: 10px; padding: 12px; font-weight: 600; font-size: 1.1rem;">
+              <i class="bi bi-check-circle me-2"></i>Proceed to Checkout
+            </button>
+          </div>
+        </div>
+        
+      </div>
+      
+    </div>
 
+    <!-- ============================================
+     MINI-CART FOOTER (PERSISTENT)
+     ============================================ -->
+<div id="miniCartFooter" style="
+position: fixed;
+bottom: 0;
+left: 0;
+right: 0;
+background: white;
+box-shadow: 0 -4px 12px rgba(0,0,0,0.15);
+padding: 12px 20px;
+display: none;
+z-index: 9999;
+cursor: pointer;
+transition: transform 0.3s ease;
+" onclick="navigateToCart()">
 
+<div style="display: flex; align-items: center; justify-content: space-between; max-width: 1200px; margin: 0 auto;">
+  
+  <!-- Left: Item Count & Preview -->
+  <div style="flex: 1;">
+    <div style="font-weight: 700; font-size: 1rem; color: #333;">
+      <i class="bi bi-cart3"></i> <span id="miniCartCount">0</span> Item(s)
+    </div>
+    <div style="font-size: 0.85rem; color: #666; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;" id="miniCartPreview">
+      <!-- Product names preview -->
+    </div>
+  </div>
+  
+  <!-- Right: Total & CTA -->
+  <div style="display: flex; align-items: center; gap: 20px;">
+    <div style="text-align: right;">
+      <div style="font-size: 0.85rem; color: #666;">Total</div>
+      <div style="font-weight: 700; font-size: 1.2rem; color: #25D366;" id="miniCartTotal">₹0</div>
+    </div>
+    <button class="btn btn-success" style="border-radius: 10px; padding: 10px 20px; font-weight: 600; white-space: nowrap;">
+      View Cart <i class="bi bi-arrow-right ms-1"></i>
+    </button>
+  </div>
+  
+</div>
+
+</div>
+
+<!-- ============================================
+     SHOP CONFLICT MODAL
+     ============================================ -->
+     <div class="modal fade" id="shopConflictModal" tabindex="-1" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
+          
+          <!-- Modal Header -->
+          <div class="modal-header" style="background: linear-gradient(135deg, #ff6b6b 0%, #ee5a6f 100%); color: white; border: none;">
+            <h5 class="modal-title" style="font-weight: 700;">
+              <i class="bi bi-exclamation-triangle me-2"></i>Different Shop Detected
+            </h5>
+          </div>
+          
+          <!-- Modal Body -->
+          <div class="modal-body p-4">
+            <p style="font-size: 1rem; margin-bottom: 20px;">
+              Your cart contains items from <strong id="currentShopName">Shop A</strong>.
+            </p>
+            <p style="font-size: 1rem; margin-bottom: 20px;">
+              You're trying to add an item from <strong id="newShopName">Shop B</strong>.
+            </p>
+            <div class="alert alert-warning" style="border-radius: 10px;">
+              <i class="bi bi-info-circle me-2"></i>
+              <strong>Note:</strong> You can only order from one shop at a time. Do you want to replace your current cart?
+            </div>
+          </div>
+          
+          <!-- Modal Footer -->
+          <div class="modal-footer" style="border: none; padding: 20px;">
+            <button type="button" class="btn btn-secondary" onclick="closeShopConflictModal()" style="border-radius: 10px; padding: 10px 24px;">
+              <i class="bi bi-x-circle me-2"></i>Cancel
+            </button>
+            <button type="button" class="btn btn-danger" onclick="confirmReplaceCart()" style="border-radius: 10px; padding: 10px 24px; font-weight: 600;">
+              <i class="bi bi-arrow-repeat me-2"></i>Replace Cart
+            </button>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
+<!-- ============================================
+     EDIT PRODUCT MODAL (SHOPOWNERS ONLY)
+     ============================================ -->
+     <div class="modal fade" id="editProductModal" tabindex="-1" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content" style="border-radius: 15px; border: none; overflow: hidden;">
+          
+          <!-- Modal Header -->
+          <div class="modal-header" style="background: linear-gradient(135deg, #1976d2 0%, #1565c0 100%); color: white; border: none;">
+            <h5 class="modal-title" style="font-weight: 700;">
+              <i class="bi bi-pencil-square me-2"></i>Edit Product
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          
+          <!-- Modal Body -->
+          <div class="modal-body p-4">
+            <form id="editProductForm">
+              
+              <!-- Hidden Product ID -->
+              <input type="hidden" id="editProductId">
+              
+              <!-- Product Name -->
+              <div class="mb-3">
+                <label for="editProductName" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-box-seam me-2" style="color: #1976d2;"></i>Product Name <span style="color: red;">*</span>
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="editProductName" 
+                  placeholder="e.g., Ceramic Tiles"
+                  required
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+              <!-- Price -->
+              <div class="mb-3">
+                <label for="editProductPrice" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-currency-rupee me-2" style="color: #25D366;"></i>Price (₹) <span style="color: red;">*</span>
+                </label>
+                <input 
+                  type="number" 
+                  class="form-control form-control-lg" 
+                  id="editProductPrice" 
+                  placeholder="e.g., 499"
+                  required
+                  min="0"
+                  step="0.01"
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+              <!-- Stock -->
+              <div class="mb-3">
+                <label for="editProductStock" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-boxes me-2" style="color: #ff9800;"></i>Stock Quantity <span style="color: red;">*</span>
+                </label>
+                <div class="input-group" style="border-radius: 10px; overflow: hidden;">
+                  <button 
+                    type="button" 
+                    class="btn btn-outline-danger" 
+                    onclick="adjustEditStock(-1)"
+                    style="border-radius: 10px 0 0 10px; padding: 0 20px;">
+                    <i class="bi bi-dash-lg"></i>
+                  </button>
+                  <input 
+                    type="number" 
+                    class="form-control form-control-lg text-center" 
+                    id="editProductStock" 
+                    placeholder="0"
+                    required
+                    min="0"
+                    style="border: 1px solid #dee2e6; font-weight: 600; font-size: 1.2rem;"
+                  >
+                  <button 
+                    type="button" 
+                    class="btn btn-outline-success" 
+                    onclick="adjustEditStock(1)"
+                    style="border-radius: 0 10px 10px 0; padding: 0 20px;">
+                    <i class="bi bi-plus-lg"></i>
+                  </button>
+                </div>
+                <small class="text-muted">Use - and + buttons or type directly</small>
+              </div>
+              
+              <!-- Brand (Optional) -->
+              <div class="mb-3">
+                <label for="editProductBrand" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-tag me-2" style="color: #9c27b0;"></i>Brand (Optional)
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="editProductBrand" 
+                  placeholder="e.g., Samsung"
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+              <!-- Size (Optional) -->
+              <div class="mb-3">
+                <label for="editProductSize" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-rulers me-2" style="color: #f44336;"></i>Size (Optional)
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="editProductSize" 
+                  placeholder="e.g., 2x2 ft"
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+              <!-- Category (Optional) -->
+              <div class="mb-3">
+                <label for="editProductCategory" class="form-label" style="font-weight: 600; color: #333;">
+                  <i class="bi bi-folder me-2" style="color: #ff5722;"></i>Category (Optional)
+                </label>
+                <input 
+                  type="text" 
+                  class="form-control form-control-lg" 
+                  id="editProductCategory" 
+                  placeholder="e.g., Floor Tiles"
+                  style="border-radius: 10px;"
+                >
+              </div>
+              
+            </form>
+          </div>
+          
+          <!-- Modal Footer -->
+          <div class="modal-footer" style="border: none; padding: 20px;">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" style="border-radius: 10px; padding: 10px 24px;">
+              <i class="bi bi-x-circle me-2"></i>Cancel
+            </button>
+            <button type="button" class="btn btn-primary" onclick="saveEditedProduct()" style="border-radius: 10px; padding: 10px 24px; font-weight: 600;">
+              <i class="bi bi-check-circle me-2"></i>Save Changes
+            </button>
+          </div>
+          
+        </div>
+      </div>
+    </div>
+    
 
 <!-- ============================================
      JAVASCRIPT
@@ -1950,12 +2252,10 @@ function renderShopInfo(shop) {
     `;
   }
 }
-
-
 /**
- * Render Shop Products
+ * Render Shop Products (WITH CART + EDIT INTEGRATION)
  */
-function renderShopProducts(products) {
+ function renderShopProducts(products) {
   const productsGrid = document.getElementById('shopProductsGrid');
   const emptyState = document.getElementById('shopProductsEmptyState');
   
@@ -1973,11 +2273,67 @@ function renderShopProducts(products) {
   productsGrid.style.display = 'flex';
   if (emptyState) emptyState.style.display = 'none';
   
+  // ✅ Check if current user is shop owner
+  const isOwner = window.currentUser && 
+                  window.currentUser.role === 'shopowner' && 
+                  currentShopData && 
+                  window.currentUser.uid === currentShopData.ownerId;
+  
   // Render each product
   products.forEach(product => {
+    // Check if product is in cart
+    const cartItem = getCartItem(product.id);
+    const inCart = !!cartItem;
+    const quantity = cartItem ? cartItem.quantity : 0;
+    const stock = product.stock || 0;
+    const price = product.price || 0;
+    
+    // Prepare product data for addToCart
+    const productData = {
+      id: product.id,
+      name: product.name || 'Unnamed Product',
+      price: price,
+      stock: stock,
+      brand: product.brand || '',
+      size: product.size || '',
+      category: product.category || '',
+      shopId: product.shopId || currentShopData?.id,
+      shopName: product.shopName || currentShopData?.shopName,
+      ownerId: product.ownerId || currentShopData?.ownerId
+    };
+    
     const productCard = `
       <div class="col-md-4 col-sm-6 col-12">
-        <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+        <div class="card h-100" style="border: none; border-radius: 12px; box-shadow: 0 2px 8px rgba(0,0,0,0.08); overflow: hidden; transition: transform 0.2s; position: relative;" onmouseover="this.style.transform='translateY(-5px)'" onmouseout="this.style.transform='translateY(0)'">
+          
+          ${isOwner ? `
+            <!-- ✅ EDIT BUTTON (SHOPOWNERS ONLY) -->
+            <button 
+              onclick="openEditProductModal('${product.id}')" 
+              style="
+                position: absolute; 
+                top: 10px; 
+                right: 10px; 
+                background: rgba(25, 118, 210, 0.95); 
+                color: white; 
+                border: none; 
+                border-radius: 50%; 
+                width: 36px; 
+                height: 36px; 
+                display: flex; 
+                align-items: center; 
+                justify-content: center; 
+                cursor: pointer; 
+                z-index: 10;
+                transition: all 0.2s;
+                box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+              "
+              onmouseover="this.style.background='rgba(21, 101, 192, 0.95)'; this.style.transform='scale(1.1)'"
+              onmouseout="this.style.background='rgba(25, 118, 210, 0.95)'; this.style.transform='scale(1)'"
+              title="Edit Product">
+              <i class="bi bi-pencil-fill"></i>
+            </button>
+          ` : ''}
           
           <!-- Product Image/Icon -->
           <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); height: 150px; display: flex; align-items: center; justify-content: center;">
@@ -1993,20 +2349,59 @@ function renderShopProducts(products) {
             <div class="mb-2">
               ${product.brand ? `<span class="badge" style="background: #e3f2fd; color: #1976d2; font-size: 0.75rem; margin-right: 5px;">${escapeHtml(product.brand)}</span>` : ''}
               ${product.size ? `<span class="badge" style="background: #f3e5f5; color: #7b1fa2; font-size: 0.75rem;">${escapeHtml(product.size)}</span>` : ''}
+              ${product.category ? `<span class="badge" style="background: #fff3e0; color: #e65100; font-size: 0.75rem; margin-left: 5px;">${escapeHtml(product.category)}</span>` : ''}
             </div>
             
             <div class="d-flex justify-content-between align-items-center mb-2">
               <span style="font-size: 1.2rem; font-weight: 700; color: #25D366;">
-                ₹${formatPrice(product.price || 0)}
+                ${price > 0 ? `₹${formatPrice(price)}` : '<span style="color: #999; font-size: 0.9rem;">Price TBD</span>'}
               </span>
               <span class="text-muted" style="font-size: 0.85rem;">
-                Stock: ${product.stock || 0}
+                ${stock > 0 ? `Stock: ${stock}` : '<span style="color: #dc3545;">Out of Stock</span>'}
               </span>
             </div>
             
-            <button class="btn btn-sm w-100" style="background: #25D366; color: white; border: none; border-radius: 8px; padding: 8px; font-weight: 600;" onclick="addToCart('${product.id}')">
-              <i class="bi bi-cart-plus me-1"></i>Add to Cart
-            </button>
+            ${!isOwner ? `
+              <!-- ✅ CART BUTTON / QUANTITY STEPPER (CUSTOMERS ONLY) -->
+              <div id="cartBtn_${product.id}">
+                ${inCart ? `
+                  <!-- Quantity Stepper -->
+                  <div class="quantity-stepper w-100" style="justify-content: space-between; padding: 10px 15px;">
+                    <button 
+                      onclick="event.stopPropagation(); updateCartQuantity('${product.id}', -1);" 
+                      ${quantity <= 1 ? 'disabled' : ''}
+                      title="${quantity <= 1 ? 'Remove from cart' : 'Decrease quantity'}">
+                      <i class="bi bi-${quantity <= 1 ? 'trash' : 'dash'}"></i>
+                    </button>
+                    <span style="font-size: 1.1rem; font-weight: 600;">${quantity}</span>
+                    <button 
+                      onclick="event.stopPropagation(); updateCartQuantity('${product.id}', 1);" 
+                      ${quantity >= stock ? 'disabled' : ''}
+                      title="${quantity >= stock ? 'Stock limit reached' : 'Increase quantity'}">
+                      <i class="bi bi-plus"></i>
+                    </button>
+                  </div>
+                  ${quantity >= stock ? '<p class="text-warning text-center mb-0 mt-2" style="font-size: 0.75rem;"><i class="bi bi-exclamation-triangle"></i> Max stock reached</p>' : ''}
+                ` : `
+                  <!-- Add to Cart Button -->
+                  <button 
+                    class="btn btn-sm w-100 btn-add-to-cart" 
+                    style="background: ${stock > 0 ? '#25D366' : '#ccc'}; color: white; border: none; border-radius: 8px; padding: 10px; font-weight: 600; transition: all 0.2s;" 
+                    onclick="event.stopPropagation(); addToCart(${JSON.stringify(productData).replace(/"/g, '&quot;')});"
+                    ${stock <= 0 ? 'disabled' : ''}
+                    onmouseover="if(this.style.background === 'rgb(37, 211, 102)') this.style.background='#128C7E'"
+                    onmouseout="if(!this.disabled) this.style.background='#25D366'">
+                    <i class="bi bi-cart-plus me-1"></i>${stock > 0 ? 'Add to Cart' : 'Out of Stock'}
+                  </button>
+                `}
+              </div>
+            ` : `
+              <!-- ✅ SHOPOWNER INFO (NO CART BUTTONS) -->
+              <div class="alert alert-info mb-0" style="border-radius: 8px; padding: 8px; font-size: 0.85rem;">
+                <i class="bi bi-info-circle me-1"></i> Click <strong>Edit</strong> to manage this product
+              </div>
+            `}
+            
           </div>
           
         </div>
@@ -2015,7 +2410,10 @@ function renderShopProducts(products) {
     
     productsGrid.insertAdjacentHTML('beforeend', productCard);
   });
+  
+  console.log(`✅ Rendered ${products.length} products (Owner: ${isOwner})`);
 }
+
 
 /**
  * Filter Shop Products
@@ -2395,7 +2793,639 @@ function removePendingProduct(index) {
 }
 
 
+/**
+ * ==========================================
+ * CART MANAGEMENT SYSTEM
+ * ==========================================
+ */
 
+// Global cart state
+let cart = {
+  items: [],
+  shopId: null,
+  shopName: null,
+  shopOwnerId: null
+};
+
+// Pending item for shop conflict resolution
+let pendingCartItem = null;
+
+/**
+ * Initialize Cart from Storage
+ */
+function initializeCart() {
+  try {
+    const savedCart = localStorage.getItem('ue2shop_cart');
+    if (savedCart) {
+      cart = JSON.parse(savedCart);
+      console.log('✅ Cart loaded from storage:', cart);
+      updateMiniCart();
+    }
+  } catch (error) {
+    console.error('❌ Error loading cart:', error);
+    cart = { items: [], shopId: null, shopName: null, shopOwnerId: null };
+  }
+}
+
+/**
+ * Save Cart to Storage
+ */
+function saveCart() {
+  try {
+    localStorage.setItem('ue2shop_cart', JSON.stringify(cart));
+    console.log('💾 Cart saved to storage');
+  } catch (error) {
+    console.error('❌ Error saving cart:', error);
+  }
+}
+
+/**
+ * Add Product to Cart
+ */
+function addToCart(product) {
+  console.log('🛒 Add to cart:', product);
+  
+  // Check if customer
+  if (!window.currentUser || window.currentUser.role !== 'customer') {
+    alert('⚠️ Only customers can add items to cart. Please sign in as a customer.');
+    return;
+  }
+  
+  // Check stock
+  if (product.stock <= 0) {
+    alert('❌ This product is out of stock!');
+    return;
+  }
+  
+  // Check shop conflict
+  if (cart.shopId && cart.shopId !== product.shopId) {
+    // Different shop - show conflict modal
+    pendingCartItem = product;
+    showShopConflictModal(cart.shopName, product.shopName);
+    return;
+  }
+  
+  // Set shop info if first item
+  if (!cart.shopId) {
+    cart.shopId = product.shopId;
+    cart.shopName = product.shopName;
+    cart.shopOwnerId = product.ownerId;
+  }
+  
+  // Check if product already in cart
+  const existingItem = cart.items.find(item => item.id === product.id);
+  
+  if (existingItem) {
+    // Increase quantity
+    if (existingItem.quantity < product.stock) {
+      existingItem.quantity++;
+      console.log('✅ Increased quantity:', existingItem.quantity);
+    } else {
+      alert('⚠️ Cannot add more. Stock limit reached!');
+      return;
+    }
+  } else {
+    // Add new item
+    cart.items.push({
+      id: product.id,
+      name: product.name,
+      price: product.price || 0,
+      stock: product.stock,
+      quantity: 1,
+      brand: product.brand || '',
+      size: product.size || '',
+      shopId: product.shopId,
+      shopName: product.shopName,
+      ownerId: product.ownerId
+    });
+    console.log('✅ Added new item to cart');
+  }
+  
+  // Save and update UI
+  saveCart();
+  updateMiniCart();
+  updateCartPage();
+  renderShopProducts(allShopProducts); // Re-render to show stepper
+  
+  // Show success animation
+  showMiniCartBriefly();
+}
+
+/**
+ * Update Item Quantity in Cart
+ */
+function updateCartQuantity(productId, change) {
+  const item = cart.items.find(i => i.id === productId);
+  
+  if (!item) return;
+  
+  const newQuantity = item.quantity + change;
+  
+  if (newQuantity <= 0) {
+    // Remove item
+    removeFromCart(productId);
+    return;
+  }
+  
+  if (newQuantity > item.stock) {
+    alert('⚠️ Cannot add more. Stock limit reached!');
+    return;
+  }
+  
+  item.quantity = newQuantity;
+  console.log(`✅ Updated quantity: ${item.name} = ${item.quantity}`);
+  
+  saveCart();
+  updateMiniCart();
+  updateCartPage();
+  renderShopProducts(allShopProducts); // Update stepper on product page
+}
+
+/**
+ * Remove Item from Cart
+ */
+function removeFromCart(productId) {
+  const itemIndex = cart.items.findIndex(i => i.id === productId);
+  
+  if (itemIndex === -1) return;
+  
+  const item = cart.items[itemIndex];
+  console.log('🗑️ Removing from cart:', item.name);
+  
+  cart.items.splice(itemIndex, 1);
+  
+  // Clear shop info if cart is empty
+  if (cart.items.length === 0) {
+    cart.shopId = null;
+    cart.shopName = null;
+    cart.shopOwnerId = null;
+  }
+  
+  saveCart();
+  updateMiniCart();
+  updateCartPage();
+  renderShopProducts(allShopProducts); // Update product page
+}
+
+/**
+ * Clear Entire Cart
+ */
+function clearCart() {
+  console.log('🗑️ Clearing cart');
+  cart = { items: [], shopId: null, shopName: null, shopOwnerId: null };
+  saveCart();
+  updateMiniCart();
+  updateCartPage();
+  if (typeof renderShopProducts === 'function' && allShopProducts) {
+    renderShopProducts(allShopProducts);
+  }
+}
+
+/**
+ * Update Mini-Cart Footer
+ */
+function updateMiniCart() {
+  const miniCartFooter = document.getElementById('miniCartFooter');
+  const miniCartCount = document.getElementById('miniCartCount');
+  const miniCartPreview = document.getElementById('miniCartPreview');
+  const miniCartTotal = document.getElementById('miniCartTotal');
+  
+  if (!miniCartFooter) return;
+  
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const totalAmount = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  if (totalItems === 0) {
+    miniCartFooter.style.display = 'none';
+    return;
+  }
+  
+  // Show mini-cart
+  miniCartFooter.style.display = 'block';
+  miniCartFooter.classList.add('show');
+  
+  // Update count
+  if (miniCartCount) {
+    miniCartCount.textContent = totalItems;
+  }
+  
+  // Update preview (first 2 items)
+  if (miniCartPreview) {
+    const preview = cart.items.slice(0, 2).map(item => item.name).join(', ');
+    const remaining = cart.items.length > 2 ? ` +${cart.items.length - 2} more` : '';
+    miniCartPreview.textContent = preview + remaining;
+  }
+  
+  // Update total
+  if (miniCartTotal) {
+    miniCartTotal.textContent = `₹${totalAmount.toFixed(2)}`;
+  }
+  
+  console.log('✅ Mini-cart updated:', totalItems, 'items, ₹', totalAmount);
+}
+
+/**
+ * Show Mini-Cart Briefly (After Add)
+ */
+function showMiniCartBriefly() {
+  const miniCartFooter = document.getElementById('miniCartFooter');
+  if (!miniCartFooter) return;
+  
+  miniCartFooter.style.transform = 'translateY(0)';
+  miniCartFooter.style.animation = 'pulse 0.3s ease';
+  
+  setTimeout(() => {
+    miniCartFooter.style.animation = '';
+  }, 300);
+}
+
+/**
+ * Navigate to Cart Page
+ */
+function navigateToCart() {
+  console.log('🛒 Navigating to Cart Page');
+  
+  if (cart.items.length === 0) {
+    alert('⚠️ Your cart is empty!');
+    return;
+  }
+  
+  // Hide all pages
+  const mainApp = document.getElementById('mainApp');
+  const shopProductsPage = document.getElementById('shopProductsPage');
+  const cartPage = document.getElementById('cartPage');
+  
+  if (mainApp) mainApp.style.display = 'none';
+  if (shopProductsPage) shopProductsPage.style.display = 'none';
+  
+  // Show cart page
+  if (cartPage) {
+    cartPage.style.display = 'block';
+    cartPage.classList.add('active');
+  }
+  
+  // Update cart page
+  updateCartPage();
+  
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+  window.location.hash = '#cart';
+}
+
+/**
+ * Update Cart Page
+ */
+function updateCartPage() {
+  const cartItemsList = document.getElementById('cartItemsList');
+  const emptyCartState = document.getElementById('emptyCartState');
+  const cartSummary = document.getElementById('cartSummary');
+  const cartShopInfo = document.getElementById('cartShopInfo');
+  
+  if (!cartItemsList) return;
+  
+  if (cart.items.length === 0) {
+    // Show empty state
+    cartItemsList.innerHTML = '';
+    if (emptyCartState) emptyCartState.style.display = 'block';
+    if (cartSummary) cartSummary.style.display = 'none';
+    if (cartShopInfo) cartShopInfo.style.display = 'none';
+    return;
+  }
+  
+  // Hide empty state
+  if (emptyCartState) emptyCartState.style.display = 'none';
+  if (cartSummary) cartSummary.style.display = 'block';
+  if (cartShopInfo) cartShopInfo.style.display = 'block';
+  
+  // Render shop info
+  if (cartShopInfo) {
+    cartShopInfo.innerHTML = `
+      <div class="card-body">
+        <h5 style="font-weight: 700; margin-bottom: 10px;">
+          <i class="bi bi-shop"></i> ${escapeHtml(cart.shopName)}
+        </h5>
+        <p class="text-muted mb-0" style="font-size: 0.9rem;">
+          <i class="bi bi-info-circle"></i> All items are from this shop
+        </p>
+      </div>
+    `;
+  }
+  
+  // Render cart items
+  let html = '';
+  cart.items.forEach(item => {
+    html += `
+      <div class="cart-item-card">
+        <div style="display: flex; align-items: start; gap: 15px;">
+          
+          <!-- Product Image Placeholder -->
+          <div style="
+            width: 80px;
+            height: 80px;
+            background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            flex-shrink: 0;
+          ">
+            <i class="bi bi-box-seam" style="font-size: 2rem; color: #1976d2;"></i>
+          </div>
+          
+          <!-- Product Details -->
+          <div style="flex: 1;">
+            <h6 style="font-weight: 600; margin-bottom: 5px;">${escapeHtml(item.name)}</h6>
+            ${item.brand ? `<p class="text-muted mb-1" style="font-size: 0.85rem;">Brand: ${escapeHtml(item.brand)}</p>` : ''}
+            ${item.size ? `<p class="text-muted mb-1" style="font-size: 0.85rem;">Size: ${escapeHtml(item.size)}</p>` : ''}
+            <p style="font-weight: 700; font-size: 1.1rem; color: #25D366; margin-bottom: 10px;">₹${item.price.toFixed(2)}</p>
+            
+            <!-- Quantity Stepper -->
+            <div class="quantity-stepper">
+              <button onclick="updateCartQuantity('${item.id}', -1)" ${item.quantity <= 1 ? 'disabled' : ''}>
+                <i class="bi bi-dash"></i>
+              </button>
+              <span>${item.quantity}</span>
+              <button onclick="updateCartQuantity('${item.id}', 1)" ${item.quantity >= item.stock ? 'disabled' : ''}>
+                <i class="bi bi-plus"></i>
+              </button>
+            </div>
+            
+            ${item.quantity >= item.stock ? '<p class="text-warning mt-2 mb-0" style="font-size: 0.85rem;"><i class="bi bi-exclamation-triangle"></i> Stock limit reached</p>' : ''}
+          </div>
+          
+          <!-- Remove Button -->
+          <button 
+            class="btn btn-sm btn-outline-danger" 
+            onclick="removeFromCart('${item.id}')"
+            title="Remove">
+            <i class="bi bi-trash"></i>
+          </button>
+          
+        </div>
+      </div>
+    `;
+  });
+  
+  cartItemsList.innerHTML = html;
+  
+  // Update summary
+  const totalItems = cart.items.reduce((sum, item) => sum + item.quantity, 0);
+  const subtotal = cart.items.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  
+  document.getElementById('summaryItemCount').textContent = totalItems;
+  document.getElementById('summarySubtotal').textContent = `₹${subtotal.toFixed(2)}`;
+  document.getElementById('summaryTotal').textContent = `₹${subtotal.toFixed(2)}`;
+  
+  console.log('✅ Cart page updated');
+}
+
+/**
+ * Go Back from Cart
+ */
+function goBackFromCart() {
+  const cartPage = document.getElementById('cartPage');
+  if (cartPage) {
+    cartPage.style.display = 'none';
+    cartPage.classList.remove('active');
+  }
+  
+  // Check if coming from shop products page
+  if (window.location.hash.includes('shop-products')) {
+    const shopProductsPage = document.getElementById('shopProductsPage');
+    if (shopProductsPage) {
+      shopProductsPage.style.display = 'block';
+      shopProductsPage.classList.add('active');
+    }
+  } else {
+    goBackHome();
+  }
+}
+
+/**
+ * Show Shop Conflict Modal
+ */
+function showShopConflictModal(currentShop, newShop) {
+  document.getElementById('currentShopName').textContent = currentShop;
+  document.getElementById('newShopName').textContent = newShop;
+  
+  const modal = new bootstrap.Modal(document.getElementById('shopConflictModal'));
+  modal.show();
+}
+
+/**
+ * Close Shop Conflict Modal
+ */
+function closeShopConflictModal() {
+  const modal = bootstrap.Modal.getInstance(document.getElementById('shopConflictModal'));
+  if (modal) modal.hide();
+  pendingCartItem = null;
+}
+
+/**
+ * Confirm Replace Cart
+ */
+function confirmReplaceCart() {
+  console.log('🔄 Replacing cart with new shop items');
+  
+  // Clear current cart
+  clearCart();
+  
+  // Add pending item
+  if (pendingCartItem) {
+    addToCart(pendingCartItem);
+    pendingCartItem = null;
+  }
+  
+  // Close modal
+  closeShopConflictModal();
+}
+
+/**
+ * Proceed to Checkout
+ */
+function proceedToCheckout() {
+  alert('🚀 Checkout feature coming soon!\n\nThis will include:\n- Delivery address selection\n- Payment options\n- Order confirmation');
+}
+
+/**
+ * Get Cart Item by Product ID
+ */
+function getCartItem(productId) {
+  return cart.items.find(item => item.id === productId);
+}
+
+/**
+ * Check if Product is in Cart
+ */
+function isInCart(productId) {
+  return cart.items.some(item => item.id === productId);
+}
+
+// Initialize cart on page load
+document.addEventListener('DOMContentLoaded', function() {
+  initializeCart();
+  console.log('✅ Cart system initialized');
+});
+
+
+
+/**
+ * ==========================================
+ * EDIT PRODUCT FUNCTIONALITY (SHOPOWNERS ONLY)
+ * ==========================================
+ */
+
+// Store current editing product
+let currentEditingProduct = null;
+
+/**
+ * Open Edit Product Modal
+ */
+function openEditProductModal(productId) {
+  console.log('✏️ Opening edit modal for product:', productId);
+  
+  // Check if user is shop owner
+  if (!window.currentUser || window.currentUser.role !== 'shopowner') {
+    alert('⚠️ Only shopowners can edit products.');
+    return;
+  }
+  
+  if (!currentShopData || currentShopData.ownerId !== window.currentUser.uid) {
+    alert('⚠️ You can only edit products in your own shop.');
+    return;
+  }
+  
+  // Find product in allShopProducts
+  const product = allShopProducts.find(p => p.id === productId);
+  
+  if (!product) {
+    alert('❌ Product not found!');
+    return;
+  }
+  
+  // Store current editing product
+  currentEditingProduct = { ...product };
+  
+  // Populate form fields
+  document.getElementById('editProductId').value = product.id;
+  document.getElementById('editProductName').value = product.name || '';
+  document.getElementById('editProductPrice').value = product.price || 0;
+  document.getElementById('editProductStock').value = product.stock || 0;
+  document.getElementById('editProductBrand').value = product.brand || '';
+  document.getElementById('editProductSize').value = product.size || '';
+  document.getElementById('editProductCategory').value = product.category || '';
+  
+  // Open modal
+  const modal = new bootstrap.Modal(document.getElementById('editProductModal'));
+  modal.show();
+  
+  // Focus on name field
+  setTimeout(() => {
+    document.getElementById('editProductName').focus();
+  }, 200);
+}
+
+/**
+ * Adjust Stock in Edit Modal
+ */
+function adjustEditStock(change) {
+  const stockInput = document.getElementById('editProductStock');
+  if (!stockInput) return;
+  
+  let currentStock = parseInt(stockInput.value) || 0;
+  let newStock = currentStock + change;
+  
+  // Prevent negative stock
+  if (newStock < 0) newStock = 0;
+  
+  stockInput.value = newStock;
+  console.log(`📦 Stock adjusted: ${currentStock} → ${newStock}`);
+}
+
+/**
+ * Save Edited Product
+ */
+async function saveEditedProduct() {
+  console.log('💾 Saving edited product...');
+  
+  // Get form values
+  const productId = document.getElementById('editProductId').value;
+  const name = document.getElementById('editProductName').value.trim();
+  const price = parseFloat(document.getElementById('editProductPrice').value) || 0;
+  const stock = parseInt(document.getElementById('editProductStock').value) || 0;
+  const brand = document.getElementById('editProductBrand').value.trim();
+  const size = document.getElementById('editProductSize').value.trim();
+  const category = document.getElementById('editProductCategory').value.trim();
+  
+  // Validate
+  if (!name || name.length === 0) {
+    alert('⚠️ Please enter a product name!');
+    document.getElementById('editProductName').focus();
+    return;
+  }
+  
+  if (price < 0) {
+    alert('⚠️ Price cannot be negative!');
+    document.getElementById('editProductPrice').focus();
+    return;
+  }
+  
+  if (stock < 0) {
+    alert('⚠️ Stock cannot be negative!');
+    document.getElementById('editProductStock').focus();
+    return;
+  }
+  
+  try {
+    showSyncIndicator('Saving changes...', null);
+    
+    const { doc, updateDoc } = window.firebaseImports;
+    
+    // Prepare update data
+    const updateData = {
+      name: name,
+      price: price,
+      stock: stock,
+      brand: brand,
+      size: size,
+      category: category,
+      updatedAt: new Date().toISOString()
+    };
+    
+    // Update in Firebase
+    const productRef = doc(window.db, 'shops', currentShopData.id, 'products', productId);
+    await updateDoc(productRef, updateData);
+    
+    console.log('✅ Product updated in Firebase:', updateData);
+    
+    // Update local cache
+    const productIndex = allShopProducts.findIndex(p => p.id === productId);
+    if (productIndex !== -1) {
+      allShopProducts[productIndex] = {
+        ...allShopProducts[productIndex],
+        ...updateData
+      };
+    }
+    
+    // Close modal
+    const modal = bootstrap.Modal.getInstance(document.getElementById('editProductModal'));
+    if (modal) modal.hide();
+    
+    // Re-render products
+    renderShopProducts(allShopProducts);
+    
+    showSyncIndicator('Changes saved!', 2000);
+    
+    // Show success message
+    alert(`✅ Product updated successfully!\n\nName: ${name}\nPrice: ₹${price}\nStock: ${stock}`);
+    
+    currentEditingProduct = null;
+    
+  } catch (error) {
+    console.error('❌ Error saving product:', error);
+    showSyncIndicator('Save failed', 1500);
+    alert('❌ Error saving product: ' + error.message);
+  }
+}
 
 
 </script>
